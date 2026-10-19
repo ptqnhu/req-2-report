@@ -1,0 +1,11 @@
+# Schema of the GenesysCloud database for the AI assistant: structure only (tables, views, columns, foreign keys), never row data.
+# Lines starting with # are ignored. While this file has nothing else, the assistant reads the schema from SQL Server instead.
+# To fill it in, run server/scripts/schema.sql against GenesysCloud on a computer that can reach it, replacing this file:
+#   sqlcmd -S <server> -d GenesysCloud -E -C -i server/scripts/schema.sql -y 0 -f 65001 -o server/schemas/GenesysCloud.txt
+#
+# Format, one line per table or view, then the foreign keys:
+#   <schema>.<table> (table): <column> <type>, <column> <type>, ...
+#   <schema>.<view> (view): <column> <type>, ...
+#
+#   Foreign keys:
+#   <schema>.<table>.<column> -> <schema>.<table>.<column>

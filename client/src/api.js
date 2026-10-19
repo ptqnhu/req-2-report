@@ -43,6 +43,8 @@ export const api = {
   localServers: () => request("/local-servers"),
   listDatabases: (details) => request("/databases", { method: "POST", body: details }),
   connect: (details) => request("/connections", { method: "POST", body: details }),
+  /** Opens the database set up on the server (DB_* in .env); fails with status 404 when there isn't one. */
+  connectDefault: () => request("/connections/default", { method: "POST" }),
   disconnect: (id, { keepalive = false } = {}) => request(`/connections/${encodeURIComponent(id)}`, { method: "DELETE", keepalive }),
   analyze: (connectionId, sql) => request("/analyze", { method: "POST", body: { connectionId, sql } }),
   /** all: every row (up to a safety ceiling, for charts) rather than the table preview's first few. */

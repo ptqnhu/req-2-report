@@ -63,7 +63,6 @@ report-builder/
         ├── App.jsx         Step navigation and report state
         ├── api.js          All calls to the server
         ├── steps/          One component per step
-        ├── dashboards/     Dashboards: the business overview (the home page) and one per department, a file of queries each
         ├── components/     Reusable UI (report table, export panel, …)
         ├── hooks/          usePreviewRows, useTemplates, useRdlExport
         └── utils/          Sorting, totals, downloads
@@ -79,7 +78,6 @@ report-builder/
 | What the .rdl file contains | `server/src/rdl/` |
 | Number or date formatting (preview) | `shared/values.js` (and `server/src/rdl/styles.js` for SSRS) |
 | Filter behaviour | `shared/filters.js` (preview) and `server/src/rdl/filters.js` (SSRS) |
-| The home page (business overview) or a department dashboard, or adding a department | `client/src/dashboards/` (see `departments.js`) |
 | Screens and wording | `client/src/steps/`, `client/src/components/` |
 | Look and feel | `client/src/styles.css` |
 
@@ -106,6 +104,11 @@ Environment variables (all optional):
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `4000` | Server port |
+| `DB_SERVER`, `DB_DATABASE` | off | A database every page opens by itself, so nobody has to fill in the connect form. Anyone who can reach the app gets it, signed in with the login below |
+| `DB_AUTH` | `sql` | How the default database signs in: `sql`, `windows` (`DB_USER` as `DOMAIN
+ame`) or `local` (the Windows account running the app; SQL Server on this computer only) |
+| `DB_USER`, `DB_PASSWORD` | none | Login for the default database. Give it read-only access |
+| `DB_ENCRYPT`, `DB_TRUST_SERVER_CERTIFICATE` | `true`; `true` for localhost | Encryption options for the default database |
 | `ALLOWED_SERVERS` | any | Comma-separated SQL Server host names users may connect to. **Set this in production.** |
 | `CONNECTION_IDLE_MINUTES` | `30` | Close database connections unused for this long |
 | `MAX_CONNECTIONS` | `50` | Most open connections at once |
@@ -131,7 +134,7 @@ These can also go in a `.env` file at the project root (for example `AI_EFFORT=m
 
 With `AI_BACKEND=cli` (the default), the AI assistant needs Claude Code signed in on the computer running the app's server: run `claude` once and use `/login`. Its usage counts against that account. To switch to the Claude API, put `AI_BACKEND=api` and `ANTHROPIC_API_KEY=sk-ant-...` in `.env` and restart the server. The API backend also caches the schema between questions, which makes follow-ups cheaper.
 
-The assistant describes the database to Claude from a saved file in `server/schemas/` when there is one named after the database (`AdventureWorks2022.txt`, matched ignoring case); otherwise it reads the tables, columns and foreign keys from SQL Server. To save or refresh a file from a SQL Server on this computer (signs in as your Windows account), run `npm run schema:save -w server -- <database> [server]`, for example `npm run schema:save -w server -- AdventureWorks2022`. The file is plain text and can be edited by hand, for instance to add notes about what columns mean. Changes apply from the next connection to that database.
+The assistant describes the database to Claude from a saved file in `server/schemas/` when there is one named after the database (`AdventureWorks2022.txt`, matched ignoring case); otherwise it reads the tables, columns and foreign keys from SQL Server. To save or refresh a file from a SQL Server on this computer (signs in as your Windows account), run `npm run schema:save -w server -- <database> [server]`, for example `npm run schema:save -w server -- AdventureWorks2022`. The file is plain text and can be edited by hand, for instance to add notes about what columns mean; lines starting with `#` are ignored, and a file with nothing else (like the APN, NLS, LoanMart and GenesysCloud templates) counts as no file. For a database this computer can't reach, run `server/scripts/schema.sql` against it from one that can, for example `sqlcmd -S <server> -d APN -E -C -i server/scripts/schema.sql -y 0 -f 65001 -o server/schemas/APN.txt`. Changes apply from the next connection to that database.
 
 ### Activity log
 

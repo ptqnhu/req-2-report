@@ -1,16 +1,16 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_TPL, formatValue } from "@report-builder/shared";
 import Segmented from "./Segmented.jsx";
 
 /**
- * Chart colours, in this fixed order, for series that must be told apart (checked for colour blindness with the
- * dataviz palette validator against the white card). Brand green first; one series always uses it.
- * The light green (4th) is under 3:1 on white, so every chart has a legend or labels and a table view.
+ * Chart colours (the --data-* tokens in styles.css). Bars and shares are grey with the largest in lime, and a single
+ * line is near-black (INK), so most charts need no colour key. Lines that must be told apart take SERIES in this
+ * fixed order, checked with the dataviz palette validator against the card (--surface): lightness, chroma,
+ * colour-blind separation and contrast all pass.
  */
-const SERIES = ["#1E7A4C", "#C08A1E", "#2272A0", "#5FB585", "#B04A30", "#7B5EA7"];
-const OTHER = "#C9CCC6"; // the share bar's folded "Other" part, always grey
+const INK = "#1C1C1C";
+const SERIES = ["#5F7F00", "#2F6FB0", "#C2701F", "#008C7A", "#7A52C7", "#D0607F"];
 const colorOf = (i) => SERIES[i % SERIES.length];
-const partColor = (p, i) => (p.other ? OTHER : colorOf(i));
 
 /** A value in full, as the report would show it: $1,234.50, 12.5%. */
 const full = (v, col) => (v === null || v === undefined ? "–" : formatValue(v, col, DEFAULT_TPL));
@@ -47,14 +47,14 @@ function useWidth() {
 }
 
 /**
- * Headline numbers: one tile per measure. A tile's `change` (a fraction, e.g. 0.124) shows as an arrow and a
- * percentage, then `vs` saying what it's compared with.
+ * Headline numbers: one tile per measure, the first (the one the view leads with) dark. A tile's `change` (a
+ * fraction, e.g. 0.124) shows as an arrow and a percentage, then `vs` saying what it's compared with.
  */
 export function StatTiles({ tiles }) {
   return (
     <div className="ch-tiles">
-      {tiles.map((t) => (
-        <div key={t.col.key} className="ch-card ch-tile" title={full(t.value, t.col)}>
+      {tiles.map((t, i) => (
+        <div key={t.col.key} className={`ch-card ch-tile${i === 0 ? " ch-tile-lead" : ""}`} title={full(t.value, t.col)}>
           <p className="ch-tile-label">{t.label}</p>
           <p className="ch-tile-value">{compact(t.value, t.col)}</p>
           {typeof t.change === "number" && (
@@ -116,11 +116,15 @@ function ChartTable({ chart }) {
 
 const pct = (f) => `${(f * 100).toFixed(f < 0.1 ? 1 : 0)}%`;
 
-/** Ranked horizontal bars, value at each bar's tip. Negative values grow left from the zero line. */
+/**
+ * Ranked horizontal bars, value at each bar's tip. Negative values grow left from the zero line. The largest bar is
+ * lime, the rest grey; both are light on the card, so every bar keeps its value label and the table view has them all.
+ */
 function BarChart({ chart }) {
   const m = chart.measure;
   const vals = chart.bars.map((b) => b.value);
   const lo = Math.min(0, ...vals), hi = Math.max(0, ...vals), span = hi - lo || 1;
+  const top = vals.reduce((best, v, i) => (Math.abs(v) > Math.abs(vals[best]) ? i : best), 0);
   const [tip, setTip] = useState(null);
   return (
     <div className="ch-bars" onMouseLeave={() => setTip(null)}>
@@ -131,8 +135,8 @@ function BarChart({ chart }) {
             <span className="ch-bar-name" title={b.name}>{b.name}</span>
             <span className="ch-bar-track">
               <span className="ch-bar-gap" style={{ width: `calc((100% - 76px) * ${left})` }} />
-              <span className={`ch-bar${b.value < 0 ? " neg" : ""}`} style={{ width: `calc((100% - 76px) * ${width})`, background: SERIES[0] }} />
-              <span className="ch-bar-value" title={full(b.value, m)}>{compact(b.value, m)}</span>
+              <span className={`ch-bar${b.value < 0 ? " neg" : ""}${i === top ? " top" : ""}`} style={{ width: `calc((100% - 76px) * ${width})` }} />
+              <span className={`ch-bar-value${i === top ? " top" : ""}`} title={full(b.value, m)}>{compact(b.value, m)}</span>
             </span>
           </div>
         );
@@ -141,57 +145,103 @@ function BarChart({ chart }) {
   );
 }
 
-/** A single 100% bar split into parts, with the legend (name, share, value) underneath. */
+/**
+ * Shares of a whole: one row per part, a rounded bar as long as its share with the percentage inside it (or just
+ * after it when the bar is too short), then the value. The largest part is lime, the rest grey.
+ */
 function ShareBar({ chart }) {
   const m = chart.measure;
-  const [tip, setTip] = useState(null);
+  const top = chart.parts.reduce((best, p, i) => (p.value > chart.parts[best].value ? i : best), 0);
   return (
-    <div className="ch-share" onMouseLeave={() => setTip(null)}>
-      <div className="ch-share-bar">
-        {chart.parts.map((p, i) => (
-          <span key={p.name} className={tip === null || tip === i ? "" : "dim"} onMouseEnter={() => setTip(i)}
-            style={{ flexGrow: p.value, background: partColor(p, i) }} title={`${p.name}: ${full(p.value, m)} (${pct(p.value / chart.total)})`} />
-        ))}
-      </div>
-      <ul className="ch-legend ch-share-legend">
-        {chart.parts.map((p, i) => (
-          <li key={p.name} className={tip === i ? "on" : ""} onMouseEnter={() => setTip(i)}>
-            <span className="ch-swatch" style={{ background: partColor(p, i) }} />
-            <span className="ch-legend-name" title={p.name}>{p.name}</span>
-            <strong>{pct(p.value / chart.total)}</strong>
-            <span className="muted">{compact(p.value, m)}</span>
-          </li>
-        ))}
-      </ul>
+    <div className="ch-parts">
+      {chart.parts.map((p, i) => {
+        const share = p.value / chart.total, inside = share >= 0.15;
+        return (
+          <div key={p.name} className="ch-part-row" title={`${p.name}: ${full(p.value, m)} (${pct(share)})`}>
+            <span className="ch-part-name">{p.name}</span>
+            <span className="ch-part-track">
+              <span className={`ch-part-fill${i === top ? " top" : ""}${inside ? " labelled" : ""}`} style={{ width: `${Math.max(share * 100, 1.5)}%` }}>
+                {inside && <span className="ch-part-pct">{pct(share)}</span>}
+              </span>
+              {!inside && <span className="ch-part-pct">{pct(share)}</span>}
+            </span>
+            <span className="ch-part-value">{compact(p.value, m)}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
+/**
+ * A smooth line through the points that never overshoots them (monotone cubic, Fritsch-Carlson), so a curve can't
+ * suggest a value the data doesn't have. `pts`: [[x, y], ...] with no gaps.
+ */
+function smoothPath(pts) {
+  const n = pts.length, f = (v) => v.toFixed(1);
+  if (n < 3) return pts.map(([px, py], i) => `${i ? "L" : "M"}${f(px)},${f(py)}`).join("");
+  const d = pts.slice(1).map(([px, py], k) => (py - pts[k][1]) / (px - pts[k][0]));
+  const t = pts.map((_, k) => (k === 0 ? d[0] : k === n - 1 ? d[n - 2] : d[k - 1] * d[k] <= 0 ? 0 : (d[k - 1] + d[k]) / 2));
+  for (let k = 0; k < n - 1; k++) {
+    if (d[k] === 0) { t[k] = 0; t[k + 1] = 0; continue; }
+    const a = t[k] / d[k], b = t[k + 1] / d[k], h = a * a + b * b;
+    if (h > 9) { const r = 3 / Math.sqrt(h); t[k] = r * a * d[k]; t[k + 1] = r * b * d[k]; }
+  }
+  let out = `M${f(pts[0][0])},${f(pts[0][1])}`;
+  for (let k = 0; k < n - 1; k++) {
+    const [x0, y0] = pts[k], [x1, y1] = pts[k + 1], dx = (x1 - x0) / 3;
+    out += `C${f(x0 + dx)},${f(y0 + t[k] * dx)} ${f(x1 - dx)},${f(y1 - t[k + 1] * dx)} ${f(x1)},${f(y1)}`;
+  }
+  return out;
+}
+
+/** The unbroken stretches of a series (missing values split it): [[i, ...], ...]. */
+function runsOf(values) {
+  const runs = [];
+  values.forEach((v, i) => {
+    if (v === null) return;
+    if (i > 0 && values[i - 1] !== null) runs.at(-1).push(i);
+    else runs.push([i]);
+  });
+  return runs;
+}
+
 const H = 260, PAD = { top: 16, right: 16, bottom: 30, left: 56 };
 
-/** Lines over time on one axis, with a crosshair and a tooltip listing each line's value. */
+/**
+ * Smooth lines over time on one axis, with a crosshair and a tooltip listing each line's value. A single line is
+ * near-black with a soft grey fill under it and, when there aren't too many points, a dot on each; its latest value
+ * sits in a lime pill.
+ */
 function LineChart({ chart }) {
   const [ref, width] = useWidth();
   const [hover, setHover] = useState(null);
+  const fade = useId().replace(/:/g, ""); // the fill's gradient, one per chart
   const m = chart.measure, n = chart.x.values.length, multi = chart.series.length > 1;
+  const lineColor = (i) => (multi ? colorOf(i) : INK);
 
   // Everything but the hover layer depends only on the data and the width, not on where the pointer is
-  const { ticks, w, iw, ih, x, y, paths, xTicks, ends } = useMemo(() => {
+  const { ticks, w, iw, ih, x, y, paths, area, xTicks, ends } = useMemo(() => {
     const all = chart.series.flatMap((s) => s.values).filter((v) => v !== null);
     const ticks = niceTicks(Math.min(...all), Math.max(...all));
     const lo = ticks[0], hi = ticks.at(-1);
     const w = Math.max(width, 200), iw = w - PAD.left - PAD.right, ih = H - PAD.top - PAD.bottom;
     const x = (i) => PAD.left + (n === 1 ? iw / 2 : (i / (n - 1)) * iw);
     const y = (v) => PAD.top + ih - ((v - lo) / (hi - lo)) * ih;
-    const paths = chart.series.map((s) => s.values.reduce((d, v, i) => (v === null ? d : `${d}${d && s.values[i - 1] !== null ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`), ""));
+    const pointsOf = (s, run) => run.map((i) => [x(i), y(s.values[i])]);
+    const paths = chart.series.map((s) => runsOf(s.values).map((run) => smoothPath(pointsOf(s, run))).join(""));
+    // Under a single line, down to the zero line (always one of the ticks)
+    const area = multi ? "" : runsOf(chart.series[0].values).map((run) =>
+      `${smoothPath(pointsOf(chart.series[0], run))}L${x(run.at(-1)).toFixed(1)},${y(0).toFixed(1)}L${x(run[0]).toFixed(1)},${y(0).toFixed(1)}Z`).join("");
     // As many x labels as fit (about 90px each), always the first and last
     const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 90))));
     // A tick less than a full step before the last is dropped, or the two labels would overlap
     const xTicks = chart.x.values.map((_, i) => i).filter((i) => i % every === 0 && (n - 1 - i >= every || i === n - 1));
     if (xTicks.at(-1) !== n - 1) xTicks.push(n - 1);
     const ends = chart.series.map((s) => s.values.findLastIndex((v) => v !== null)); // each line's last point
-    return { ticks, w, iw, ih, x, y, paths, xTicks, ends };
-  }, [chart, width, n]);
+    return { ticks, w, iw, ih, x, y, paths, area, xTicks, ends };
+  }, [chart, width, n, multi]);
+  const dots = !multi && n <= 24; // a dot on every point only while they stay apart
 
   const onMove = (e) => {
     const box = e.currentTarget.getBoundingClientRect();
@@ -199,13 +249,15 @@ function LineChart({ chart }) {
     setHover(Math.max(0, Math.min(n - 1, i)));
   };
   const end = chart.series[0].values[ends[0]];
+  // A single line's last value, in a lime pill above its end point (about 7px a character), kept inside the plot
+  const endText = end === null || end === undefined ? "" : compact(end, m), endW = endText.length * 7 + 18;
 
   return (
     <div className="ch-line" ref={ref}>
       {multi && (
         <ul className="ch-legend">
           {chart.series.map((s, i) => (
-            <li key={s.name}><span className="ch-key" style={{ background: colorOf(i) }} /><span className="ch-legend-name" title={s.name}>{s.name}</span></li>
+            <li key={s.name}><span className="ch-key" style={{ background: lineColor(i) }} /><span className="ch-legend-name" title={s.name}>{s.name}</span></li>
           ))}
         </ul>
       )}
@@ -220,19 +272,36 @@ function LineChart({ chart }) {
           {xTicks.map((i) => (
             <text key={i} className="ch-tick" x={x(i)} y={H - 8} textAnchor={i === 0 && n > 1 ? "start" : i === n - 1 && n > 1 ? "end" : "middle"}>{chart.x.values[i]}</text>
           ))}
+          {area && (
+            <>
+              <defs>
+                <linearGradient id={fade} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor={INK} stopOpacity=".12" />
+                  <stop offset="1" stopColor={INK} stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path d={area} fill={`url(#${fade})`} />
+            </>
+          )}
           {paths.map((d, i) => (
-            <path key={chart.series[i].name} d={d} fill="none" stroke={colorOf(i)} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+            <path key={chart.series[i].name} d={d} fill="none" stroke={lineColor(i)} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
           ))}
           {hover !== null && <line className="ch-cross" x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={PAD.top + ih} />}
-          {/* A dot on each line: at its end, or at the hovered point. Ringed in white so it stays clear where lines cross. */}
+          {dots && chart.series[0].values.map((v, i) => v !== null && i !== (hover ?? ends[0]) && (
+            <circle key={i} cx={x(i)} cy={y(v)} r="3.5" fill={INK} stroke="#F7F7F7" strokeWidth="2" />
+          ))}
+          {/* A dot on each line: at its end, or at the hovered point. Ringed in the card colour so it stays clear where lines cross. */}
           {chart.series.map((s, i) => {
             const j = hover ?? ends[i];
             return j >= 0 && s.values[j] !== null && (
-              <circle key={s.name} cx={x(j)} cy={y(s.values[j])} r={hover === null ? 4 : 4.5} fill={colorOf(i)} stroke="#fff" strokeWidth="2" />
+              <circle key={s.name} cx={x(j)} cy={y(s.values[j])} r={hover === null ? 4 : 4.5} fill={lineColor(i)} stroke="#F7F7F7" strokeWidth="2" />
             );
           })}
           {!multi && hover === null && ends[0] >= 0 && (
-            <text className="ch-end" x={x(ends[0])} y={y(end) - 12} textAnchor="end">{compact(end, m)}</text>
+            <g transform={`translate(${Math.max(x(ends[0]), PAD.left + endW)},${Math.max(y(end) - 18, 12)})`}>
+              <rect className="ch-end-pill" x={-endW} y={-11} width={endW} height={22} rx={11} />
+              <text className="ch-end" x={-endW / 2} dy="0.34em" textAnchor="middle">{endText}</text>
+            </g>
           )}
         </svg>
       )}
@@ -240,7 +309,7 @@ function LineChart({ chart }) {
         <div className="ch-tip" style={{ left: Math.min(x(hover) + 12, w - 200), top: PAD.top }}>
           <p className="ch-tip-head">{chart.x.values[hover]}</p>
           {chart.series.map((s, i) => ({ s, i })).sort((a, b) => (b.s.values[hover] ?? -Infinity) - (a.s.values[hover] ?? -Infinity)).map(({ s, i }) => (
-            <p key={s.name}><span className="ch-key" style={{ background: colorOf(i) }} />{s.name}<strong>{full(s.values[hover], m)}</strong></p>
+            <p key={s.name}><span className="ch-key" style={{ background: lineColor(i) }} />{s.name}<strong>{full(s.values[hover], m)}</strong></p>
           ))}
         </div>
       )}

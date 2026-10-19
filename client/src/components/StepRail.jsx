@@ -1,23 +1,16 @@
 import { STEPS } from "../steps/steps.js";
-import Logo from "./Logo.jsx";
+import UserBadge from "./UserBadge.jsx";
 
 /**
- * Sticky top bar (logo and connected database), with the progress bar of the steps in its own row below.
+ * Sticky top bar (the signed-in person), with the progress bar of the steps in its own row below.
  * The progress bar scrolls away with the page, so long reports get the full height.
  */
-export default function StepRail({ flow, step, reached, onGo, sql, connection }) {
+export default function StepRail({ flow, step, reached, onGo, sql }) {
   return (
     <>
       <header className="rb-rail">
-        <p className="rb-brand"><a href="#" title="Back to the home page"><Logo size={24} />LoanMart Insights</a></p>
         <div className="rail-end">
-          {connection && (
-            <p className="rail-conn" title={`${connection.database} on ${connection.server}`}>
-              <span className="conn-dot" aria-hidden="true" />
-              <strong>{connection.database}</strong>
-              <span>{connection.server}</span>
-            </p>
-          )}
+          <UserBadge />
         </div>
       </header>
 

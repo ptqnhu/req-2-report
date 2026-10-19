@@ -6,6 +6,8 @@ import { parseInstanceNames, serverNameFor } from "../src/services/db/localInsta
 import { sqlErrorMessage, friendlyConnectError } from "../src/services/db/errors.js";
 import { asError } from "../src/services/db/mssqlDriver.js";
 import { fakePool } from "./helpers/fakeSqlServer.js";
+import { defaultConnection } from "../src/lib/config.js";
+import { createApp } from "../src/app.js";
 
 test("parses server names with instances and ports", () => {
   assert.deepEqual(parseServer("SQLPROD01\\SALES"), { host: "SQLPROD01", port: undefined, instanceName: "SALES" });
@@ -98,4 +100,34 @@ test("ODBC sign-in failures keep SQL Server's messages, and a missing database i
 test("connection failures become friendly messages", async () => {
   const mgr = createConnectionManager({ connect: async () => { throw new Error("Login failed for user 'x'."); } });
   await assert.rejects(mgr.open({}, {}), (e) => e.status === 422 && e.message === "Login failed. Check the user name and password.");
+});
+
+test("the default database comes from DB_* settings, and is off without DB_SERVER", () => {
+  assert.equal(defaultConnection({}), null);
+  assert.deepEqual(defaultConnection({ DB_SERVER: "sql01", DB_DATABASE: "Shop", DB_USER: "reader", DB_PASSWORD: "pw" }),
+    { server: "sql01", database: "Shop", authType: "sql", user: "reader", password: "pw", encrypt: true, trustServerCertificate: false });
+  const local = defaultConnection({ DB_SERVER: "localhost\\SQL2025", DB_DATABASE: "Shop", DB_AUTH: "Local", DB_ENCRYPT: "no" });
+  assert.equal(local.authType, "local");
+  assert.equal(local.encrypt, false);
+  assert.equal(local.trustServerCertificate, true);
+});
+
+test("POST /api/connections/default opens the default database, or 404s when there isn't one", async () => {
+  const opened = [];
+  const connections = { open: async (config, summary) => { opened.push(config); return { id: "conn1", info: { ...summary, version: "16.0" } }; }, size: () => 0 };
+  const run = async (defaultConnection, fn) => {
+    const server = createApp({ connections, defaultConnection }).listen(0);
+    await new Promise((r) => server.once("listening", r));
+    try { await fn(`http://127.0.0.1:${server.address().port}/api/connections/default`); } finally { server.close(); }
+  };
+
+  await run(null, async (url) => assert.equal((await fetch(url, { method: "POST" })).status, 404));
+  await run({ server: "sql01", database: "Shop", authType: "sql", user: "reader", password: "s3cret" }, async (url) => {
+    const res = await fetch(url, { method: "POST" });
+    assert.equal(res.status, 201);
+    const body = await res.text();
+    assert.deepEqual(JSON.parse(body), { connectionId: "conn1", server: "sql01", database: "Shop", authType: "sql", user: "reader", version: "16.0" });
+    assert.doesNotMatch(body, /s3cret/);
+    assert.equal(opened[0].password, "s3cret");
+  });
 });

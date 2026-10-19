@@ -6,43 +6,43 @@
    Shared by every page. The exported reports and the report preview keep their own colours
    (.doc below). */
 .rb {
-  /* Core palette */
-  --ink: #0A2A1C;
-  --ink2: #5C6B65;
-  --ink3: #66746E;
-  --emerald: #0F5131;
-  --bg: #F4F5F2;
-  --surface: #FFFFFF;
-  --mist: #E6EAE6;
-  /* Lime: the accent. Used sparingly: the highlighted word, the main action on a dark hero card, the AI sparkle.
-     Always with ink green text on it, never as text on a light background (too little contrast). */
+  /* Core palette: neutral greys with near-black for emphasis and lime as the one accent. The page and the menu
+     share --bg; cards sit on it a step lighter, with no edge or shadow. */
+  --ink: #1C1C1C;
+  --ink2: #555555;
+  --ink3: #666666;
+  --emerald: #3A3A3A;
+  --bg: #EAEAEA;
+  --surface: #F7F7F7;
+  --mist: #E2E2E2;
+  /* Lime: the accent. Used sparingly: a highlighted value, the highlighted word, the AI sparkle.
+     Always with near-black text on it, never as text on a light background (too little contrast). */
   --lime: #D7F36B;
   --lime-hover: #E3F78F;
-  --lime-ink: #0A2A1C;
+  --lime-ink: #1C1C1C;
   --ai: var(--lime);
-  --line: #E1E5E1;
-  --line2: #ECEFEC;
-  /* Cards: white on the off-white page; a barely-there edge and shadow, so separation comes from the contrast */
-  --card-line: rgba(10, 42, 28, .06);
-  --card-shadow: 0 1px 2px rgba(10, 42, 28, .04), 0 12px 32px -20px rgba(10, 42, 28, .16);
+  --line: #DCDCDC;
+  --line2: #E6E6E6;
+  --card-line: transparent;
+  --card-shadow: none;
   --field: #FFFFFF;
-  --field-line: #D5DBD6;
-  --btn-line: #C9D1CB;
-  --accent: #0A2A1C;
-  --accent-hover: #0F5131;
+  --field-line: #D6D6D6;
+  --btn-line: #CFCFCF;
+  --accent: #1C1C1C;
+  --accent-hover: #3A3A3A;
   --accent-ink: #FFFFFF;
-  --accent-soft: rgba(15, 81, 49, .08);
+  --accent-soft: rgba(0, 0, 0, .06);
   --muted-pill: var(--mist);
   /* Smaller surfaces */
   --raised: #FFFFFF;
   --seg-on: #FFFFFF;
-  --hover-line: #B4BEB7;
-  --code-bg: #F8F9F7;
-  --code-preview: #F1F3F0;
-  --bar-bg: rgba(244, 245, 242, .84);
-  --hero-bg: #0A2A1C;
-  --wire: #B9CCC2;
-  --badge-num-bg: #E0EDE5;
+  --hover-line: #B8B8B8;
+  --code-bg: #FAFAFA;
+  --code-preview: #F1F1F1;
+  --bar-bg: rgba(234, 234, 234, .86);
+  --hero-bg: #1C1C1C;
+  --wire: #CCCCCC;
+  --badge-num-bg: #E4E4E4;
   --badge-date-bg: #E8ECEF;
   --badge-date: #4D5B66;
   /* SQL colours, as in SSMS (blue keywords, magenta functions, red strings, green comments, grey operators),
@@ -60,17 +60,18 @@
   --warn: #8A6212;
   --warn-bg: #F6EDD9;
   --danger: var(--neg);
-  /* Charts: the brand-green tonal scale, then the muted accents when categories must be told apart. Six at most. */
-  --data-1: #0A2A1C;
-  --data-2: #0F5131;
-  --data-3: #3F8564;
-  --data-4: #84B89D;
-  --data-5: #C0DCCB;
-  --data-other: #C9CCC6;
-  --data-teal: #1F5F7A;
-  --data-rust: #8E3B2A;
-  --data-amber: #B8862C;
-  --data-slate: #6B7A86;
+  /* Charts (the same values as SERIES in components/Charts.jsx): near-black for a single series or the one
+     highlighted mark, grey for the rest; when series must be told apart, this order, checked with the dataviz
+     palette validator against --surface (lightness, chroma, colour-blind separation, contrast all pass). */
+  --data-ink: #1C1C1C;
+  --data-muted: #CFCFCF;
+  --data-1: #5F7F00;
+  --data-2: #2F6FB0;
+  --data-3: #C2701F;
+  --data-4: #008C7A;
+  --data-5: #7A52C7;
+  --data-6: #D0607F;
+  --data-other: #BDBDBD;
   --display: 'Inter Tight', 'Inter', system-ui, sans-serif;
   --serif: 'Instrument Serif', Georgia, serif;
   font-family: 'Inter Tight', 'Inter', system-ui, sans-serif;
@@ -102,7 +103,7 @@
   flex-direction: column
 }
 
-/* Sticky top bar: logo and the connected database. Stays at the top while scrolling. */
+/* Sticky top bar: page links and the signed-in person, at the right. Stays at the top while scrolling. */
 .rb-rail {
   position: sticky;
   top: 0;
@@ -115,23 +116,7 @@
   background: var(--bar-bg);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border-bottom: 1px solid var(--line);
   color: var(--ink2)
-}
-
-.rb-brand {
-  flex: none;
-  color: var(--ink);
-  font-family: var(--display);
-  font-weight: 600;
-  font-size: 17px;
-  letter-spacing: -0.02em;
-  white-space: nowrap
-}
-
-.rb-brand .rb-logo {
-  margin-right: 9px;
-  vertical-align: middle
 }
 
 /* Progress bar: the seven steps in their own row below the sticky bar. Scrolls away with the page. */
@@ -1450,10 +1435,6 @@ details.opt[open] summary {
 }
 
 @media (max-width:860px) {
-  .rb .rail-conn {
-    max-width: 55vw
-  }
-
   .types-head {
     display: none
   }
@@ -1523,12 +1504,13 @@ details.opt[open] summary {
   flex-wrap: wrap
 }
 
+/* "Connected": olive (the first chart colour) so it still reads as live on the grey theme; the text says it too */
 .conn-dot {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: var(--emerald);
-  box-shadow: 0 0 0 4px var(--accent-soft);
+  background: var(--data-1);
+  box-shadow: 0 0 0 4px rgba(95, 127, 0, .16);
   flex: none
 }
 
@@ -1634,56 +1616,13 @@ details.opt[open] summary {
   width: 240px
 }
 
-/* Connected-database chip at the right of the top bar */
-.rb .rail-conn {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 280px;
-  padding: 6px 12px;
-  border: 1px solid var(--field-line);
-  border-radius: 999px;
-  background: var(--field);
-  font-size: 13px;
-  color: var(--ink);
-  white-space: nowrap
-}
-
-.rail-conn strong {
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis
-}
-
-.rail-conn span:not(.conn-dot) {
-  color: var(--ink3);
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis
-}
-
-.rail-conn .conn-dot {
-  width: 8px;
-  height: 8px;
-  box-shadow: 0 0 0 3px var(--accent-soft)
-}
-
-.rb-brand a {
-  color: inherit;
-  text-decoration: none
-}
-
-/* Right end of a top bar: the connected database or a page link, then the theme switch */
+/* Right end of a top bar: a page link, then the signed-in person */
 .rail-end {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0
-}
-
-.rb-brand a:hover {
-  text-decoration: underline
+  min-width: 0;
+  margin-left: auto
 }
 
 body {
@@ -2263,7 +2202,7 @@ html {
 
 .tpl-canvas [data-part]:hover,
 .tpl-canvas [data-type]:hover {
-  outline: 1px dashed var(--data-3);
+  outline: 1px dashed var(--ink3);
   outline-offset: -1px
 }
 
@@ -2426,8 +2365,8 @@ html {
 
 .ch-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px
 }
 
 .ch-grid {
@@ -2436,41 +2375,64 @@ html {
   gap: 16px
 }
 
-/* Tiles and chart cards share the .panel look (white card, faint edge and shadow) */
+/* Tiles and chart cards: a flat card a step lighter than the page, with large rounded corners */
 .ch-card {
   margin: 0;
   min-width: 0;
   background: var(--surface);
-  border: 1px solid var(--card-line);
-  box-shadow: var(--card-shadow);
-  border-radius: 16px;
-  padding: 20px 22px 22px
+  border: 0;
+  border-radius: 28px;
+  padding: 24px 26px 26px
 }
 
 /* Headline tile: label, big number, note, spaced by the grid rather than margins */
 .ch-card.ch-tile {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   align-content: start;
-  padding: 16px 20px
+  min-height: 150px;
+  padding: 22px 24px
 }
 
 .ch-tile-label {
-  font-size: 13px;
-  color: var(--ink2)
+  font-size: 15px;
+  color: var(--ink)
 }
 
 .ch-tile-value {
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  margin-top: 10px;
+  font-size: 44px;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
   font-variant-numeric: proportional-nums
 }
 
 .ch-tile-note {
   font-size: 12.5px;
-  color: var(--ink3)
+  color: var(--ink2)
+}
+
+/* The first tile, the number the view leads with: white on near-black; the change in lime or a light coral */
+.ch-card.ch-tile-lead {
+  background: var(--ink);
+  color: #FFFFFF
+}
+
+.ch-tile-lead .ch-tile-label {
+  color: #FFFFFF
+}
+
+.ch-tile-lead .ch-tile-note {
+  color: rgba(255, 255, 255, .72)
+}
+
+.ch-tile-lead .ch-change.up {
+  color: var(--lime)
+}
+
+.ch-tile-lead .ch-change.down {
+  color: #FFB4A0
 }
 
 .ch-card.wide {
@@ -2486,8 +2448,9 @@ html {
 }
 
 .ch-head h3 {
-  font-size: 15px;
-  font-weight: 600
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.02em
 }
 
 .ch-head .muted {
@@ -2538,13 +2501,19 @@ html {
 
 .ch-bar {
   flex: none;
-  height: 20px;
+  height: 22px;
   min-width: 2px;
-  border-radius: 0 4px 4px 0
+  border-radius: 0 11px 11px 0;
+  background: var(--data-muted)
 }
 
 .ch-bar.neg {
-  border-radius: 4px 0 0 4px
+  border-radius: 11px 0 0 11px
+}
+
+/* The largest bar */
+.ch-bar.top {
+  background: var(--lime)
 }
 
 .ch-bar-value {
@@ -2557,29 +2526,76 @@ html {
   white-space: nowrap
 }
 
-/* Share: one 100% bar, 2px white gaps between the parts, legend underneath */
-.ch-share-bar {
+/* The largest bar's value */
+.ch-bar-value.top {
+  font-weight: 600
+}
+
+/* Shares: a row per part, name | rounded bar (share inside, or just after when short) | value */
+.ch-parts {
+  display: grid;
+  gap: 10px
+}
+
+.ch-part-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 30%) minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 12px
+}
+
+.ch-part-name {
+  font-size: 13px;
+  color: var(--ink2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis
+}
+
+.ch-part-track {
   display: flex;
-  gap: 2px;
-  height: 24px
+  align-items: center;
+  gap: 8px;
+  min-width: 0
 }
 
-.ch-share-bar span {
-  flex-basis: 0;
-  min-width: 3px;
-  transition: opacity .15s
+.ch-part-fill {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  min-width: 6px;
+  border-radius: 999px;
+  background: var(--data-muted)
 }
 
-.ch-share-bar span:first-child {
-  border-radius: 4px 0 0 4px
+/* Only a bar with its share inside is padded, so a short one stays as short as its share */
+.ch-part-fill.labelled {
+  padding: 0 12px
 }
 
-.ch-share-bar span:last-child {
-  border-radius: 0 4px 4px 0
+/* The largest part */
+.ch-part-fill.top {
+  background: var(--lime)
 }
 
-.ch-share-bar span.dim {
-  opacity: .35
+.ch-part-pct {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums
+}
+
+.ch-part-fill .ch-part-pct {
+  color: var(--lime-ink)
+}
+
+.ch-part-value {
+  text-align: right;
+  font-size: 13px;
+  color: var(--ink2);
+  font-variant-numeric: tabular-nums
 }
 
 .ch-legend {
@@ -2605,42 +2621,6 @@ html {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 220px
-}
-
-.ch-share-legend {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2px;
-  margin-top: 14px
-}
-
-.ch-share-legend li {
-  display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto 64px;
-  gap: 10px;
-  padding: 3px 6px;
-  border-radius: 6px
-}
-
-.ch-share-legend li.on {
-  background: var(--accent-soft)
-}
-
-.ch-share-legend strong {
-  color: var(--ink);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums
-}
-
-.ch-share-legend .muted {
-  text-align: right;
-  font-variant-numeric: tabular-nums
-}
-
-.ch-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px
 }
 
 .ch-key {
@@ -2684,9 +2664,13 @@ html {
 }
 
 .ch-end {
-  fill: var(--ink);
+  fill: var(--lime-ink);
   font-size: 12.5px;
-  font-weight: 500
+  font-weight: 600
+}
+
+.ch-end-pill {
+  fill: var(--lime)
 }
 
 .ch-tip {
@@ -2760,28 +2744,6 @@ html {
   }
 }
 
-/* Department dashboards: the heading with the department drop-down at its right */
-.page-head.dash-head {
-  max-width: none;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px 32px;
-  flex-wrap: wrap
-}
-
-.page-head.dash-head > div:first-child {
-  max-width: 72ch
-}
-
-.dash-pick .sel {
-  min-width: 200px
-}
-
-.dash-grid {
-  margin-top: 16px
-}
-
 /* A tile's change on the period before: arrow and word carry the direction, the colour only backs them up */
 .ch-change {
   font-weight: 600
@@ -2795,58 +2757,309 @@ html {
   color: var(--neg)
 }
 
-/* A chart or tile row still loading, or whose query failed */
-.ch-card.dash-wait {
-  min-height: 140px
+/* Icon (components/Icon.jsx) */
+.lp-icon {
+  flex: none;
+  vertical-align: -0.15em
 }
 
-.ch-card.dash-wait-tiles {
-  min-height: 0;
-  padding: 16px 20px
-}
-
-/* Links to the report tools in the dashboards' top bar; on narrow screens only "All tools" stays */
-.rail-links {
+/* The menu on the left of every page (SideNav); the page fills the rest of the width */
+.app-frame {
   display: flex;
-  align-items: center;
-  gap: 2px;
-  flex-wrap: wrap
+  align-items: flex-start;
+  min-height: 100vh;
+  background: var(--bg)
 }
 
-@media (max-width: 860px) {
-  .rail-links a:not(:last-child) {
+.app-page {
+  flex: 1;
+  min-width: 0
+}
+
+.side-nav {
+  position: sticky;
+  top: 0;
+  flex: none;
+  width: 220px;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 12px 14px;
+  background: var(--bg); /* the same as the page */
+  transition: width .15s ease
+}
+
+/* Minimize / expand, at the bottom of the menu */
+.side-toggle {
+  width: 100%;
+  margin-top: auto;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer
+}
+
+/* Minimized: only the icons (and the logo) show */
+@media (min-width: 861px) {
+  /* The icons stay where they are when expanded (20px from the edge: 12px menu padding + 8px link padding), each
+     on a 34px circle (9px round the icon), so the menu narrows to 11px + 34px + 11px */
+  .side-nav.mini {
+    width: 56px;
+    padding-left: 11px;
+    padding-right: 11px;
+    overflow-x: hidden /* the hidden "Main menu" is wider than the menu; no scrollbar for it */
+  }
+
+  .side-nav.mini .side-label {
     display: none
+  }
+
+  /* "Main menu" keeps its space, so the icons below it don't move up */
+  .side-nav.mini .side-group {
+    visibility: hidden;
+    white-space: nowrap
+  }
+
+  .side-nav.mini .side-brand {
+    padding-left: 9px
+  }
+
+  .side-nav.mini .side-brand .rb-logo {
+    margin-right: 0
+  }
+
+  .side-nav.mini .side-link {
+    padding: 0
+  }
+
+  /* Each icon sits on a white circle; the page you're on gets a black circle with a white icon */
+  .side-nav.mini .side-link .lp-icon {
+    box-sizing: content-box;
+    padding: 9px;
+    border-radius: 50%;
+    background: #FFFFFF;
+    color: var(--ink);
+    transition: background .15s ease, color .15s ease
+  }
+
+  .side-nav.mini .side-link:hover,
+  .side-nav.mini .side-link.current {
+    background: none
+  }
+
+  .side-nav.mini .side-link:hover .lp-icon {
+    background: var(--mist)
+  }
+
+  .side-nav.mini .side-link.current .lp-icon {
+    background: var(--ink);
+    color: #FFFFFF
   }
 }
 
-/* The dashboards' date slicer: one row above everything it scopes, the period on show at its end */
-.dash-slicer {
+@media (prefers-reduced-motion: reduce) {
+  .side-nav,
+  .side-nav .lp-icon {
+    transition: none
+  }
+}
+
+/* The app's logo and name, at the top of the menu */
+.side-brand {
+  padding: 2px 8px 6px;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  white-space: nowrap
+}
+
+/* The logo minimizes and expands the menu */
+.side-brand button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer
+}
+
+.side-brand .rb-logo {
+  margin-right: 8px;
+  vertical-align: middle
+}
+
+/* The signed-in person (UserBadge), at the right of each page's top bar: the picture, which opens a card with the
+   name, role and Sign out */
+.user-badge {
+  position: relative;
+  flex: none
+}
+
+.user-btn {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer
+}
+
+.user-btn:hover .user-avatar,
+.user-btn[aria-expanded=true] .user-avatar {
+  box-shadow: 0 0 0 3px var(--accent-soft)
+}
+
+.user-avatar {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600
+}
+
+.user-card {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 240px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 14px 32px -12px rgba(10, 42, 28, .22)
+}
+
+.user-card-head {
   display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 12px 16px;
-  margin-bottom: 14px
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line2)
 }
 
-.dash-slicer .sel {
-  min-width: 180px
+.user-card-head .user-avatar {
+  font-size: 14px
 }
 
-.dash-slicer-note {
-  padding-bottom: 10px;
+.user-text {
+  min-width: 0;
+  line-height: 1.3
+}
+
+.user-name {
   font-size: 14px;
-  color: var(--ink2)
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap
 }
 
-.dash-slicer-note strong {
+.user-role {
+  font-size: 12px;
+  color: var(--ink3)
+}
+
+.user-signout {
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink2);
+  text-align: left;
+  cursor: pointer
+}
+
+.user-signout:hover {
+  background: var(--accent-soft);
   color: var(--ink)
 }
 
-/* While a new period loads, the charts keep their last render, faded, rather than jumping to placeholders */
-.ch-results {
-  transition: opacity .2s
+.side-group {
+  padding: 16px 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink3)
 }
 
-.ch-results.dash-stale {
-  opacity: .55
+/* Rows are 36px whether the menu is expanded or minimized, so the icons don't move between the two */
+.side-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--ink2);
+  text-decoration: none
+}
+
+.side-link:hover {
+  background: var(--accent-soft);
+  color: var(--ink)
+}
+
+.side-link.current {
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-weight: 600
+}
+
+.side-link .lp-icon {
+  flex: none
+}
+
+/* Narrow windows: the menu becomes a strip across the top */
+@media (max-width: 860px) {
+  .app-frame {
+    flex-direction: column;
+    align-items: stretch
+  }
+
+  .side-nav {
+    position: static;
+    width: auto;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    overflow-x: auto
+  }
+
+  .side-nav nav {
+    display: flex;
+    gap: 2px
+  }
+
+  .side-group,
+  .side-toggle {
+    display: none
+  }
+
+  .side-brand {
+    padding: 0 4px
+  }
+
+  .side-link {
+    white-space: nowrap
+  }
 }

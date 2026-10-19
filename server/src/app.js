@@ -15,15 +15,15 @@ import { noActivityLog } from "./services/activityLog.js";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(here, "../../client/dist");
 
-/** @param {{connections: ReturnType<import("./services/db/connectionManager.js").createConnectionManager>, activityLog?: object}} deps */
-export function createApp({ connections, activityLog = noActivityLog }) {
+/** @param {{connections: ReturnType<import("./services/db/connectionManager.js").createConnectionManager>, activityLog?: object, defaultConnection?: object | null}} deps */
+export function createApp({ connections, activityLog = noActivityLog, defaultConnection }) {
   const app = express();
   app.disable("x-powered-by");
   app.use(cors({ origin: process.env.CLIENT_ORIGIN || true }));
   app.use(express.json({ limit: process.env.BODY_LIMIT || "2mb" }));
 
   app.get("/api/health", (req, res) => res.json({ ok: true, connections: connections.size() }));
-  app.use("/api", connectionRoutes(connections, activityLog));
+  app.use("/api", connectionRoutes(connections, activityLog, defaultConnection));
   app.use("/api", queryRoutes(connections));
   app.use("/api", templateRoutes);
   app.use("/api", rdlRoutes);

@@ -49,7 +49,7 @@ export async function querySchema(pool) {
 }
 
 /**
- * The saved schema file for this database, or null if there isn't one.
+ * The saved schema file for this database, or null if there isn't one (or it only has `#` comment lines, like a template).
  * Matched against the folder listing (ignoring case) so a database name is never used as a path.
  */
 export async function readSchemaFile(database, dir = SCHEMA_DIR) {
@@ -59,7 +59,7 @@ export async function readSchemaFile(database, dir = SCHEMA_DIR) {
   const want = `${database}.txt`.toLowerCase();
   const file = files.find((f) => f.toLowerCase() === want);
   if (!file) return null;
-  const text = (await readFile(join(dir, file), "utf8")).trim();
+  const text = (await readFile(join(dir, file), "utf8")).split(/\r?\n/).filter((l) => !l.startsWith("#")).join("\n").trim();
   return text || null;
 }
 

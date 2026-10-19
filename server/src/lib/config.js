@@ -32,4 +32,25 @@ export const settings = {
   aiTimeoutMs: num(process.env.AI_TIMEOUT_SECONDS, 180) * 1000,
   aiSchemaMaxChars: num(process.env.AI_SCHEMA_MAX_CHARS, 1_500_000),
   allowedServers: (process.env.ALLOWED_SERVERS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean),
+  /** The database every page opens by itself, without the connect form (null when DB_SERVER isn't set). */
+  defaultConnection: defaultConnection(process.env),
 };
+
+/**
+ * DB_SERVER, DB_DATABASE, DB_AUTH ("sql", "windows" or "local"), DB_USER, DB_PASSWORD, DB_ENCRYPT and
+ * DB_TRUST_SERVER_CERTIFICATE, in the shape the connect form sends.
+ */
+export function defaultConnection(env) {
+  const v = (name) => env["DB_" + name];
+  if (!v("SERVER")?.trim()) return null;
+  const yes = (s, fallback) => (s === undefined || s === "" ? fallback : /^(1|true|yes)$/i.test(s.trim()));
+  return {
+    server: v("SERVER").trim(),
+    database: v("DATABASE") || "",
+    authType: (v("AUTH") || "sql").trim().toLowerCase(),
+    user: v("USER") || "",
+    password: v("PASSWORD") || "",
+    encrypt: yes(v("ENCRYPT"), true),
+    trustServerCertificate: yes(v("TRUST_SERVER_CERTIFICATE"), /^(localhost|127\.0\.0\.1|\.|\(local\))([\\,]|$)/i.test(v("SERVER").trim())),
+  };
+}

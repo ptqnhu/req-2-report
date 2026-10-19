@@ -6,6 +6,9 @@ const RECENT_KEY = "report-builder.recentServers";
 const LAST_LOCAL_KEY = "report-builder.lastLocalDatabase";
 const OTHER = "__other__";
 let autoConnectTried = false; // once per page load, so Disconnect doesn't reconnect straight away
+// The default database (DB_* on the server): "unknown" until first tried, "none" when there isn't one or after
+// Disconnect (so it doesn't reconnect straight away), otherwise "on".
+let defaultDb = "unknown";
 
 /** Local SQL Server installs use a self-signed certificate, so trust it by default for them. */
 const isLocal = (server) => /^(localhost|127\.0\.0\.1|\.|\(local\))([\\,]|$)/i.test(server.trim());
@@ -49,10 +52,41 @@ const defaultName = (f) => (f.database.trim() ? `${f.database.trim()} on ${f.ser
 
 const EMPTY = { server: "localhost", database: "", authType: "sql", user: "", password: "", encrypt: true, trustServerCertificate: true };
 
+/**
+ * Connects by itself to the default database when the server has one (DB_* in .env), on every page that asks for a
+ * connection, including after one expires; otherwise, or when that fails, shows the connect form.
+ */
 export default function ConnectStep({ connection, onConnected, onDisconnect }) {
+  const [trying, setTrying] = useState(() => !connection && defaultDb !== "none");
+  const [error, setError] = useState("");
+  const attempt = useRef(null); // one request, even when React runs the effect twice in development
+  useEffect(() => {
+    if (!trying) return;
+    let live = true;
+    attempt.current ||= api.connectDefault();
+    attempt.current
+      .then((c) => { defaultDb = "on"; if (live) onConnected(c); })
+      .catch((e) => {
+        if (e.status === 404) defaultDb = "none";
+        else if (live) setError(`Couldn't open the default database: ${e.message}`);
+      })
+      .finally(() => { if (live) setTrying(false); });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (trying) return <p className="loading">Connecting to the database…</p>;
+  const disconnect = () => {
+    if (defaultDb === "on") { defaultDb = "none"; autoConnectTried = true; } // stay on the form after Disconnect
+    onDisconnect();
+  };
+  return <ConnectForm connection={connection} onConnected={onConnected} onDisconnect={disconnect} initialError={error} />;
+}
+
+function ConnectForm({ connection, onConnected, onDisconnect, initialError }) {
   const [form, setForm] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialError);
   const [recent] = useState(loadRecent);
   const [saved, setSaved] = useState(loadSaved);
   const [remember, setRemember] = useState(false);

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DEFAULT_TPL, templateStyle } from "@report-builder/shared";
-import Logo from "./components/Logo.jsx";
+import UserBadge from "./components/UserBadge.jsx";
 import TemplateDesigner from "./components/TemplateDesigner.jsx";
 import { useTemplates } from "./hooks/useTemplates.js";
 
@@ -36,9 +36,9 @@ export default function TemplatesPage() {
     <div className="rb">
       <div className="rb-shell">
         <header className="rb-rail">
-          <p className="rb-brand"><a href="#" title="Back to the home page"><Logo size={24} />LoanMart Insights</a></p>
           <div className="rail-end">
             <a className="btn btn-sm" href="#/build/ssrs">Create SSRS report</a>
+            <UserBadge />
           </div>
         </header>
 

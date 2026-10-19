@@ -58,6 +58,15 @@ test("schema comes from the saved file for the database, ignoring case, without 
   await assert.rejects(loadSchema(schemaPool([]), { maxChars: 5, database: "AdventureWorks2022", dir }), (e) => e.status === 413);
 });
 
+test("schema files skip # comment lines, and one with only comments is ignored", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "schemas-"));
+  await writeFile(join(dir, "APN.txt"), "# notes\r\ndbo.Loan (table): LoanID int\r\n# more\r\n", "utf8");
+  await writeFile(join(dir, "NLS.txt"), "# template\n# dbo.Example (table): ID int\n", "utf8");
+  assert.deepEqual(await loadSchema(schemaPool([]), { maxChars: 10_000, database: "APN", dir }), { text: "dbo.Loan (table): LoanID int", source: "file" });
+  const pool = schemaPool([{ sch: "dbo", obj: "T", kind: "U", col: "A", type: "int" }]);
+  assert.deepEqual(await loadSchema(pool, { maxChars: 10_000, database: "NLS", dir }), { text: "dbo.T (table): A int", source: "database" });
+});
+
 test("schema refuses databases too large to send, and empty ones", async () => {
   const cols = [{ sch: "dbo", obj: "T", kind: "U", col: "A", type: "int" }];
   await assert.rejects(loadSchema(schemaPool(cols), { maxChars: 5 }), (e) => e.status === 413);

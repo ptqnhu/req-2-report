@@ -17,7 +17,7 @@ import { sortRows } from "./utils/table.js";
 
 const EMPTY_ANALYSIS = { columns: [], table: null, key: null };
 
-/** The builder. `kind` ("adhoc", "ssrs" or "charts") is picked from a link (the dashboards' top bar or the tools page) and decides the steps. */
+/** The builder. `kind` ("adhoc", "ssrs" or "charts") is picked from a link (the menu on the left) and decides the steps. */
 export default function App({ kind }) {
   // Navigation. `step` is a step id; `reached` is how far along the flow the user has got (an index into it).
   const flow = FLOWS[kind];
@@ -213,7 +213,7 @@ export default function App({ kind }) {
   return (
     <div className="rb">
       <div className="rb-shell">
-        <StepRail flow={flow} step={step} reached={reached} onGo={go} sql={sql} connection={connection} />
+        <StepRail flow={flow} step={step} reached={reached} onGo={go} sql={sql} />
 
         <main className="rb-main">
           <div className="page-head">
