@@ -13,7 +13,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health")
     def health():
-        return {"ok": True, "connection": 0}
+        return {"ok": True, "connections": 0}
 
     return app
 
