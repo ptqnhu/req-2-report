@@ -1,5 +1,5 @@
 import { deflateSync } from "node:zlib";
-import { BRAND, BAND_LINES_PATHS, BAND_LINES_SIZE, BAND_LINES_RIGHT, BAND_LINES_STROKE } from "@report-builder/shared";
+import { BRAND, BAND_LINES_PATHS, BAND_LINES_SIZE, BAND_LINES_RIGHT, BAND_LINES_STROKE } from "@req-2-report/shared";
 
 // The LoanMart header band's background for the .rdl: the green gradient with the "LM" line art drawn in, as a PNG
 // made at the band's exact size. SSRS's web viewer moves report items that overlap, so the lines can't be an image

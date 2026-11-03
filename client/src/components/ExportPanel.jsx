@@ -39,7 +39,7 @@ export default function ExportPanel({ exp, onChange, result }) {
                   <input className="inp" value={exp.database} onChange={(e) => set({ database: e.target.value })} placeholder="SalesDB" />
                 </label>
               </div>
-              <p className="fld-hint">Filled in from your connection. Change them if the report server reaches the database by a different name.</p>
+              <p className="fld-hint">The database is the one you picked. Enter the SQL Server the report server reaches it on.</p>
               <div className="fld" style={{ marginTop: 10 }}>
                 <span className="fld-label">Report readers connect with</span>
                 <Segmented label="Report credentials" value={exp.dsAuth} onChange={(v) => set({ dsAuth: v })}

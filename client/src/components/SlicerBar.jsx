@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { family, sliceOptions, slicerDefaults, slicerItems, layoutGrid, itemPrompt, GRID_MAX_COLS, GRID_MAX_ROWS, PROMPT_MAX } from "@report-builder/shared";
+import { family, sliceOptions, slicerDefaults, slicerItems, layoutGrid, itemPrompt, GRID_MAX_COLS, GRID_MAX_ROWS, PROMPT_MAX } from "@req-2-report/shared";
 
 /** A multi-select list like SSRS's: "(Select All)" plus a checkbox per value. value: undefined (all) or [keys]. */
 function ListPicker({ label, options, value, onChange }) {

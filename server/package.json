@@ -1,5 +1,5 @@
 {
-  "name": "@report-builder/server",
+  "name": "@req-2-report/server",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -7,17 +7,13 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test": "node --test \"test/**/*.test.js\"",
-    "schema:save": "node scripts/saveSchema.js"
+    "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
-    "@report-builder/shared": "1.0.0",
+    "@req-2-report/shared": "1.0.0",
     "cors": "^2.8.5",
-    "express": "^4.21.2",
-    "msnodesqlv8": "^5.5.0",
-    "mssql": "^11.0.1",
-    "pdfkit": "^0.20.2"
+    "express": "^4.21.2"
   },
   "engines": {
     "node": ">=18.18"

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { alignOf, formatValue } from "@report-builder/shared";
+import { alignOf, formatValue } from "@req-2-report/shared";
 import { WIDTHS, computeTotals } from "../utils/table.js";
 import { textStyle, part } from "../utils/look.js";
 

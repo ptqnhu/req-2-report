@@ -1,4 +1,4 @@
-import { coerce } from "@report-builder/shared";
+import { coerce } from "@req-2-report/shared";
 
 // A small made-up loan dataset for designing templates without a database.
 // It has one column of every type, so each format and alignment shows up.

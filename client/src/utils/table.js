@@ -1,8 +1,8 @@
-import { NUMERIC, idLike } from "@report-builder/shared";
+import { NUMERIC, idLike } from "@req-2-report/shared";
 
 export const WIDTHS = { auto: undefined, narrow: 90, medium: 160, wide: 260 };
 
-export { sortRows } from "@report-builder/shared"; // shared so ad hoc exports sort like the preview
+export { sortRows } from "@req-2-report/shared"; // shared with the .rdl export, so the preview sorts the same way
 
 /** Sum for numbers, average for percentages. Returns null when nothing is totalled. */
 export function computeTotals(cols, rows) {

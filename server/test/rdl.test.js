@@ -1,15 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_TPL, DEFAULT_EXPORT, effectiveColumns, keyBy } from "@report-builder/shared";
-import { fakePool, describeRow } from "./helpers/fakeSqlServer.js";
-import { describeQuery } from "../src/services/db/describe.js";
+import { DEFAULT_TPL, DEFAULT_EXPORT, effectiveColumns, keyBy } from "@req-2-report/shared";
+import { toColumns } from "../src/services/columns.js";
 import { buildRdl, validateExport, exportWarnings } from "../src/rdl/buildRdl.js";
 
 const SQL = "SELECT order_id, status, order_date, is_paid, revenue, discount_rate FROM dbo.Orders";
-const columns = await describeQuery(fakePool({ describe: [
-  describeRow(1, "order_id", "int"), describeRow(2, "status", "nvarchar(20)"), describeRow(3, "order_date", "date"),
-  describeRow(4, "is_paid", "bit"), describeRow(5, "revenue", "decimal(12,2)"), describeRow(6, "discount_rate", "decimal(5,4)"),
-] }), SQL);
+const columns = toColumns([
+  { name: "order_id", type: "int" }, { name: "status", type: "nvarchar(20)" }, { name: "order_date", type: "date" },
+  { name: "is_paid", type: "bit" }, { name: "revenue", type: "decimal(12,2)" }, { name: "discount_rate", type: "decimal(5,4)" },
+]);
 
 function build(over = {}, tplOver = {}) {
   const tpl = { ...DEFAULT_TPL, rowNumbers: true, org: "Acme & Co", footer: "=not an expression", ...tplOver };
@@ -21,7 +20,7 @@ function build(over = {}, tplOver = {}) {
     { id: "3", col: k("order_date"), op: "after", value: "2026-02-01", value2: "" },
     { id: "4", col: k("is_paid"), op: "true", value: "", value2: "" },
   ];
-  const exp = { ...DEFAULT_EXPORT, server: "sql01", database: "Shop", ...over };
+  const exp = { ...DEFAULT_EXPORT, dsMode: "embedded", server: "sql01", database: "Shop", ...over };
   return buildRdl({ sql: SQL, columns, effCols, tpl, title: "Orders", desc: "", filters, colsByKey: keyBy(effCols), sort: { key: k("revenue"), dir: "desc" }, exp });
 }
 
@@ -108,7 +107,7 @@ test("other styles keep their own header and no logo", () => {
 
 test("export settings and warnings", () => {
   assert.ok(validateExport({ ...DEFAULT_EXPORT }));
-  assert.equal(validateExport({ ...DEFAULT_EXPORT, server: "s", database: "d" }), "");
+  assert.equal(validateExport({ ...DEFAULT_EXPORT, dsMode: "embedded", server: "s", database: "d" }), "");
   assert.equal(exportWarnings([{ name: "Column3", unnamed: true }])[0].startsWith("Column 3 has no name"), true);
 });
 
@@ -116,7 +115,7 @@ test("display options reach the .rdl: formats, yes/no labels and text case", () 
   const tpl = { ...DEFAULT_TPL, cols: { revenue: { display: "k" }, is_paid: { display: "yn" }, status: { display: "upper" } } };
   const effCols = effectiveColumns(columns, tpl);
   const xml = buildRdl({ sql: SQL, columns, effCols, tpl, title: "Orders", desc: "", filters: [], colsByKey: keyBy(effCols), sort: null,
-    exp: { ...DEFAULT_EXPORT, server: "s", database: "d" } });
+    exp: { ...DEFAULT_EXPORT, dsMode: "embedded", server: "s", database: "d" } });
   assert.match(xml, /<Value>=Fields!revenue\.Value<\/Value><Style>.*?<Format>'\$'#,0,\.0&quot;K&quot;;-'\$'#,0,\.0&quot;K&quot;<\/Format>/);
   assert.match(xml, /IIF\(CBool\(Fields!is_paid\.Value\), &quot;Y&quot;, &quot;N&quot;\)/);
   assert.match(xml, /<Value>=UCase\(Fields!status\.Value\)<\/Value>/);

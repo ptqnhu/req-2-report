@@ -1,11 +1,5 @@
-import { formatValue, fileSlug } from "@report-builder/shared";
-
 export function downloadText(content, filename, mime) {
-  downloadBlob(new Blob([content], { type: mime }), filename);
-}
-
-export function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(new Blob([content], { type: mime }));
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
@@ -13,11 +7,4 @@ export function downloadBlob(blob, filename) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-export function downloadCSV(cols, rows, tpl, title) {
-  const esc = (s) => { s = s == null ? "" : String(s); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-  const lines = [cols.map((c) => esc(c.label)).join(",")];
-  rows.forEach((r) => lines.push(cols.map((c) => esc(formatValue(r[c.key], c, tpl))).join(",")));
-  downloadText(lines.join("\n"), fileSlug(title) + ".csv", "text/csv");
 }

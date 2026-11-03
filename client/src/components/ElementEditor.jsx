@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LOOK_PARTS, PROP_NAMES, DISPLAY_OPTIONS, distinctDisplays, lookDefaults } from "@report-builder/shared";
+import { LOOK_PARTS, PROP_NAMES, DISPLAY_OPTIONS, distinctDisplays, lookDefaults } from "@req-2-report/shared";
 
 const COLOR_PROPS = new Set(["bg", "color", "stripe", "zebra", "line"]);
 const TYPE_NAMES = {

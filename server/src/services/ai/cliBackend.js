@@ -32,6 +32,9 @@ function runCli(cli, args, input, { cwd, timeoutMs }) {
       if (out.trim()) resolve(out);
       else reject(new HttpError(502, `The AI assistant stopped (exit code ${code}). ${err.trim().split("\n").at(-1) || ""}`.trim()));
     });
+    // If the CLI exits before reading the prompt, stdin errors with EPIPE; unhandled, that would stop the server.
+    // The "close" handler above still reports the failure.
+    child.stdin.on("error", () => {});
     child.stdin.end(input);
   });
 }

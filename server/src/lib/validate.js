@@ -1,4 +1,4 @@
-import { TYPES, DEFAULT_TPL, DEFAULT_EXPORT, DATE_FORMATS, cleanLook, cleanTypes } from "@report-builder/shared";
+import { TYPES, DEFAULT_TPL, DEFAULT_EXPORT, DATE_FORMATS, cleanLook, cleanTypes } from "@req-2-report/shared";
 import { HttpError } from "./errors.js";
 
 export function requireString(v, name, { max = 200_000, allowEmpty = true } = {}) {

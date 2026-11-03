@@ -55,7 +55,7 @@ export const templateStyle = (tpl) => {
 };
 
 export const DEFAULT_EXPORT = {
-  dsMode: "embedded", // "embedded" connection string or "shared" data source on the report server
+  dsMode: "shared", // "shared" data source on the report server (set up there, with its credentials) or an "embedded" connection string
   dsRef: "",
   server: "",
   database: "",

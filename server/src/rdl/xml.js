@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-export const xesc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+export const xesc = (s) => String(s ?? "")
+  .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, "") // not allowed in XML; SSRS rejects the file
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 export const vbStr = (s) => `"${String(s).replace(/"/g, '""')}"`;
 /** Static text that starts with "=" would be read as an expression, so wrap it. */
 export const lit = (s) => (String(s).startsWith("=") ? "=" + vbStr(s) : String(s));

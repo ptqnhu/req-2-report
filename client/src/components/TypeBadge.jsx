@@ -1,4 +1,4 @@
-import { family } from "@report-builder/shared";
+import { family } from "@req-2-report/shared";
 
 export default function TypeBadge({ type, showType = false }) {
   const fam = family(type);

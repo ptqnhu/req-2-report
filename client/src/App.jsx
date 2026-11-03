@@ -1,43 +1,46 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { DEFAULT_TPL, DEFAULT_EXPORT, effectiveColumns, keyBy, applyFilters, prettify, liveSlicers, suggestSlicers, applySlicers, describeSlices } from "@report-builder/shared";
+import { DEFAULT_TPL, DEFAULT_EXPORT, effectiveColumns, keyBy, applyFilters, prettify, liveSlicers, suggestSlicers, applySlicers, describeSlices } from "@req-2-report/shared";
 import { api } from "./api.js";
-import { STEPS, FLOWS, sharedSteps, KIND_NAMES } from "./steps/steps.js";
+import { STEPS, FLOW } from "./steps/steps.js";
 import StepRail from "./components/StepRail.jsx";
-import ExportStep from "./steps/ExportStep.jsx";
-import ConnectStep from "./steps/ConnectStep.jsx";
 import QueryStep from "./steps/QueryStep.jsx";
 import ColumnsStep from "./steps/ColumnsStep.jsx";
 import TemplateStep from "./steps/TemplateStep.jsx";
 import DetailsStep from "./steps/DetailsStep.jsx";
 import ReportStep from "./steps/ReportStep.jsx";
-import ChartsStep from "./steps/ChartsStep.jsx";
-import { usePreviewRows } from "./hooks/usePreviewRows.js";
 import { useRdlExport } from "./hooks/useRdlExport.js";
 import { sortRows } from "./utils/table.js";
+import { sampleRows } from "./utils/sampleRows.js";
 
-const EMPTY_ANALYSIS = { columns: [], table: null, key: null };
+/** `sql` is the query the columns were read from: the report is built from it, not from whatever is in the editor now. */
+const EMPTY_ANALYSIS = { columns: [], table: null, key: null, sql: "", note: "" };
+const keyOf = (database, query) => `${database}\u0000${query}`;
 
-/** The builder. `kind` ("adhoc", "ssrs" or "charts") is picked from a link (the menu on the left) and decides the steps. */
-export default function App({ kind }) {
+/**
+ * The SSRS report builder. The app never connects to a database: the AI writes the query from the database's schema
+ * file and works out its columns, the preview shows sample rows, and the .rdl runs the query on the report server.
+ */
+export default function App() {
   // Navigation. `step` is a step id; `reached` is how far along the flow the user has got (an index into it).
-  const flow = FLOWS[kind];
-  const [step, setStep] = useState("connect");
+  const [step, setStep] = useState("query");
   const [reached, setReached] = useState(0);
-  const at = (id) => flow.indexOf(id);
+  const at = (id) => FLOW.indexOf(id);
   const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
   const [error, setError] = useState("");
 
-  // Connection and report definition
-  const [connection, setConnection] = useState(null);
+  // Database and report definition
+  const [databases, setDatabases] = useState(null);
+  const [database, setDatabaseRaw] = useState("");
   const [sql, setSql] = useState("");
   const [aiChat, setAiChat] = useState([]); // the conversation with the AI query assistant
-  const [chartChat, setChartChat] = useState([]); // the conversation on the Charts step
+  const answers = useRef(new Map()); // the columns of each query the AI wrote, by keyOf(database, sql)
   const [analysis, setAnalysis] = useState(EMPTY_ANALYSIS);
   const [tpl, setTpl] = useState(DEFAULT_TPL);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [filters, setFilters] = useState([]);
-  // Slicers: the filters readers change in SSRS. Suggested from the first rows until the user edits them.
+  // Slicers: the filters readers change in SSRS. Suggested from the sample rows until the user edits them.
   const [slicers, setSlicersRaw] = useState([]);
   const [sliceValues, setSliceValues] = useState({}); // what the preview is sliced by; readers' choices aren't exported
   const slicersEdited = useRef(false);
@@ -53,73 +56,24 @@ export default function App({ kind }) {
 
   const go = (id) => { setError(""); setStep(id); setReached((r) => Math.max(r, at(id))); };
 
-  /** Switching kind keeps the steps both kinds share (connection, query, columns) but not the old kind's own steps. */
-  const lastKind = useRef(kind);
-  const convertTo = useRef(null); // the step to open after "Convert to SSRS report"
-  useEffect(() => {
-    if (lastKind.current === kind) return;
-    const shared = sharedSteps(FLOWS[lastKind.current], FLOWS[kind]);
-    lastKind.current = kind;
-    const target = convertTo.current;
-    convertTo.current = null;
-    if (target && FLOWS[kind].includes(target)) {
-      setError("");
-      setStep(target);
-      setReached(FLOWS[kind].indexOf(target));
-      return;
-    }
-    setReached((r) => Math.min(r, shared - 1));
-    if (!FLOWS[kind].includes(step)) setStep(FLOWS[kind][shared - 1]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind]);
-
-  /** On to an SSRS report with the same connection, query and columns, opening at `target`. */
-  function convertToSsrs(target) {
-    convertTo.current = target;
-    location.hash = "#/build/ssrs";
-    window.scrollTo(0, 0);
-  }
-
-  /** The server forgot the connection (idle timeout or restart): send the user back to reconnect. */
-  function handleExpired(e) {
-    setConnection(null);
-    setAnalysis(EMPTY_ANALYSIS);
-    setStep("connect");
-    setReached(at("connect"));
-    setError(e.message);
-  }
-
-  function onConnected(conn) {
-    setConnection(conn);
-    setAnalysis(EMPTY_ANALYSIS); // a new database means the query must be read again
+  /** A new database: its own schema, so the conversation starts over; the .rdl points at it. */
+  function setDatabase(name) {
+    setDatabaseRaw(name);
     setAiChat([]);
-    setChartChat([]);
-    setReached(at("connect"));
-    setExp((e) => ({ ...e, server: conn.server, database: conn.database, dsAuth: conn.authType === "sql" ? "sql" : "windows" }));
-    setError("");
+    setExp((e) => ({ ...e, database: name }));
   }
 
-  async function onDisconnect() {
-    if (connection) api.disconnect(connection.connectionId).catch(() => {});
-    setConnection(null);
-    setAnalysis(EMPTY_ANALYSIS);
-    setReached(at("connect"));
-  }
-
-  // Close the server-side connection when the tab is closed.
   useEffect(() => {
-    if (!connection) return;
-    const close = () => api.disconnect(connection.connectionId, { keepalive: true }).catch(() => {});
-    window.addEventListener("pagehide", close);
-    return () => window.removeEventListener("pagehide", close);
-  }, [connection]);
+    api.databases()
+      .then((r) => {
+        setDatabases(r.databases);
+        if (r.databases.length) setDatabase(r.databases[0].name);
+      })
+      .catch((e) => { setDatabases([]); setError(e.message); });
+  }, []);
 
-  // Live data for the previews
-  const preview = usePreviewRows({
-    connectionId: connection?.connectionId, sql, analysisKey: analysis.key, columns, onExpired: handleExpired,
-    all: kind === "charts", // charts sum up every row; tables preview the first few
-  });
-  const rows = preview.rows;
+  // Made-up rows that fit the columns' types: the report's look, not its data
+  const rows = useMemo(() => sampleRows(columns), [columns]);
   const effCols = useMemo(() => effectiveColumns(columns, tpl), [columns, tpl]);
   const colsByKey = useMemo(() => keyBy(effCols), [effCols]);
   const sortedAll = useMemo(() => sortRows(rows, sort, colsByKey), [rows, sort, colsByKey]);
@@ -129,13 +83,13 @@ export default function App({ kind }) {
   const slicedRows = useMemo(() => applySlicers(filteredRows, activeSlicers, sliceValues, colsByKey), [filteredRows, activeSlicers, sliceValues, colsByKey]);
 
   useEffect(() => {
-    if (flow.includes("details") && !slicersEdited.current && analysis.key && rows.length) setSlicersRaw(suggestSlicers(effectiveColumns(columns, tpl), rows));
+    if (!slicersEdited.current && analysis.key && rows.length) setSlicersRaw(suggestSlicers(effectiveColumns(columns, tpl), rows));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analysis.key, rows]);
+  }, [analysis.key]);
 
   const rdlResult = useRdlExport(
     {
-      sql, tpl, title, desc, filters, sort, exp, slicers: activeSlicers, paramLayout,
+      sql: analysis.sql, tpl, title, desc, filters, sort, exp, slicers: activeSlicers, paramLayout,
       columns: columns.map(({ key, name, type, selected, unnamed, dup }) => ({ key, name, type, selected, unnamed, dup })),
     },
     step === "report"
@@ -154,9 +108,9 @@ export default function App({ kind }) {
   const toggleSort = (key) =>
     setSort((s) => (s && s.key === key ? (s.dir === "asc" ? { key, dir: "desc" } : null) : { key, dir: "asc" }));
 
-  /** A fresh analysis of the query: new columns, so filters and sort start over. */
-  function applyAnalysis(res, key) {
-    setAnalysis({ columns: res.columns, table: res.table, key });
+  /** New columns for the query, so filters and sort start over. */
+  function applyAnalysis(res, query) {
+    setAnalysis({ columns: res.columns, table: res.table, key: keyOf(database, query), sql: query, note: res.note || "" });
     setFilters([]);
     setSlicersRaw([]);
     setSliceValues({});
@@ -164,86 +118,79 @@ export default function App({ kind }) {
     slicersEdited.current = false;
     setSort(null);
     if (!title && res.table) setTitle(`${prettify(res.table)} Report`);
-    setReached(at(step)); // the steps after this one start again
+    setReached(at("query")); // the steps after this one start again
   }
 
-  const analysisKeyOf = (query) => `${connection.connectionId}\u0000${query}`;
-
-  /** Reads the query's columns from SQL Server (once per query); the rows then load for the preview. */
-  async function analyzeQuery(query) {
-    const key = analysisKeyOf(query);
-    if (key === analysis.key) return preview.refresh();
-    applyAnalysis(await api.analyze(connection.connectionId, query), key);
-  }
+  /** Keeps the columns of each AI answer, so moving on with that query needs no second request. */
+  const rememberAnswer = (answer) => {
+    if (answer.columns?.length) answers.current.set(keyOf(database, answer.sql), { columns: answer.columns, table: answer.table });
+  };
 
   async function next() {
     setError("");
-    if (step === "connect") {
-      if (!connection) return setError("Connect to a database to continue.");
-      return go(flow[at(step) + 1]);
-    }
     if (step === "query") {
-      if (analysisKeyOf(sql) !== analysis.key) {
-        setBusy(true);
-        try {
-          await analyzeQuery(sql);
-        } catch (e) {
-          if (e.status === 410) return handleExpired(e);
-          return setError(e.message);
-        } finally {
-          setBusy(false);
+      if (!database) return setError("Pick a database. Its schema file is what the query is written from.");
+      if (!sql.trim()) return setError("Write a query, or ask AI to write one.");
+      const query = sql;
+      const key = keyOf(database, query);
+      if (key !== analysis.key) {
+        const known = answers.current.get(key);
+        if (known) applyAnalysis(known, query);
+        else {
+          // Written or edited by hand: the AI works out its columns from the schema
+          setBusy(true);
+          try {
+            applyAnalysis(await api.aiColumns(database, query), query);
+          } catch (e) {
+            return setError(e.message);
+          } finally {
+            setBusy(false);
+          }
         }
       }
       return go("columns");
     }
     if (step === "columns" && !columns.some((c) => c.selected)) return setError("Select at least one column.");
     if (step === "details" && !title.trim()) return setError("Add a report title to continue.");
-    go(flow[at(step) + 1]);
+    go(FLOW[at(step) + 1]);
   }
 
   const previewProps = {
-    cols: effCols, totalRows: rows.length, moreRows: preview.truncated, rowTotal: preview.count, counting: preview.counting, tpl, title, desc, colsByKey, sort, onSort: toggleSort, onMove: moveColumn, loading: preview.loading,
+    cols: effCols, totalRows: rows.length, moreRows: false, rowTotal: null, counting: false, tpl, title, desc, colsByKey, sort, onSort: toggleSort, onMove: moveColumn, loading: false,
   };
   const S = STEPS[step];
-  const nextLabel = typeof S.next === "function" ? S.next(kind) : S.next;
-  const blocked = step === "connect" && !connection; // Continue waits for the step's own action
   const stepNo = at(step);
   const showPreviewBar = S.previewBar && analysis.key;
+  const edited = step !== "query" && analysis.key && sql !== analysis.sql;
 
   return (
     <div className="rb">
       <div className="rb-shell">
-        <StepRail flow={flow} step={step} reached={reached} onGo={go} sql={sql} />
+        <StepRail flow={FLOW} step={step} reached={reached} onGo={go} sql={sql} />
 
         <main className="rb-main">
           <div className="page-head">
-            <p className="stepno">{KIND_NAMES[kind]} · Step {stepNo + 1} of {flow.length}</p>
+            <p className="stepno">SSRS report · Step {stepNo + 1} of {FLOW.length}</p>
             <h1>{S.heading}</h1>
             <p className="help">{S.help}</p>
           </div>
 
           {showPreviewBar && (
             <div className="preview-bar no-print">
-              {preview.loading ? <span className="loading">Loading rows from {connection?.database}…</span>
-                : preview.error ? <span className="error">{preview.error}</span>
-                : <span>{preview.truncated ? `Previewing the first ${preview.limit} rows. The ${kind === "adhoc" ? "downloaded file has" : "SSRS report returns"} every row.` : `Previewing all ${rows.length} rows.`}</span>}
-              <button className="btn btn-quiet btn-sm" onClick={preview.refresh} disabled={preview.loading}>Reload rows</button>
+              <span>
+                Sample rows: made-up values that show the layout. The SSRS report shows the real data from {database}.
+                {edited && " The query has changed since its columns were read: go back to Query and choose Read columns."}
+              </span>
+              {analysis.note && <span className="error">{analysis.note}</span>}
             </div>
           )}
 
-          {step === "connect" && <ConnectStep connection={connection} onConnected={onConnected} onDisconnect={onDisconnect} />}
-
-          {step === "query" && <QueryStep sql={sql} setSql={setSql} connection={connection} aiChat={aiChat} setAiChat={setAiChat} onExpired={handleExpired} />}
+          {step === "query" && (
+            <QueryStep databases={databases} database={database} setDatabase={setDatabase} sql={sql} setSql={setSql}
+              aiChat={aiChat} setAiChat={setAiChat} onAnswer={rememberAnswer} onAiBusy={setAiBusy} busy={busy} />
+          )}
 
           {step === "columns" && <ColumnsStep columns={columns} setColumns={setColumns} rows={rows} tpl={tpl} setTpl={setTpl} />}
-
-
-          {step === "chart" && (
-            <ChartsStep
-              connection={connection} sql={sql} setSql={setSql} chat={chartChat} setChat={setChartChat} onExpired={handleExpired}
-              onRun={analyzeQuery} ran={!!analysis.key} cols={effCols} rows={rows} preview={preview}
-            />
-          )}
 
           {step === "template" && (
             <TemplateStep tpl={tpl} setTpl={setTpl} effCols={effCols} previewProps={{ ...previewProps, rows: sortedAll }} />
@@ -260,17 +207,6 @@ export default function App({ kind }) {
             />
           )}
 
-          {step === "export" && (
-            <ExportStep
-              title={title} setTitle={setTitle} onExpired={handleExpired} onConvert={() => convertToSsrs("template")}
-              payload={{
-                connectionId: connection?.connectionId, sql, tpl, sort,
-                columns: columns.map(({ key, name, type, selected, unnamed, dup }) => ({ key, name, type, selected, unnamed, dup })),
-              }}
-              previewProps={{ ...previewProps, rows: sortedAll }}
-            />
-          )}
-
           {step === "report" && (
             <ReportStep
               exp={exp} setExp={setExp} rdlResult={rdlResult}
@@ -281,15 +217,13 @@ export default function App({ kind }) {
           )}
 
           <nav className="rb-nav" aria-label="Steps">
-            <div>{stepNo > 0 && <button className="btn" onClick={() => go(flow[stepNo - 1])}>Back</button>}</div>
+            <div>{stepNo > 0 && <button className="btn" onClick={() => go(FLOW[stepNo - 1])}>Back</button>}</div>
             <div className="row">
               {error && <span className="error" role="alert">{error}</span>}
-              {nextLabel ? (
-                <button className={`btn${blocked ? "" : " btn-primary"}`} onClick={next} disabled={busy || blocked}>
-                  {busy ? "Asking SQL Server…" : nextLabel}
+              {S.next ? (
+                <button className="btn btn-primary" onClick={next} disabled={busy || aiBusy}>
+                  {busy ? "Reading columns…" : aiBusy ? "Waiting for AI…" : S.next}
                 </button>
-              ) : kind === "charts" ? (
-                analysis.key && <button className="btn" onClick={() => convertToSsrs("columns")} title="Same connection and query, as a formatted SSRS report">Turn into an SSRS report</button>
               ) : (
                 <button className="btn" onClick={() => go("query")}>Start a new query</button>
               )}

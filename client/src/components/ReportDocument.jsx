@@ -1,4 +1,4 @@
-import { filterActive, describeFilter, fmtDate, LOANMART_LOGO_PNG, BAND_LINES_SIZE, BAND_LINES_RIGHT, BAND_LINES_PATHS, BAND_LINES_STROKE } from "@report-builder/shared";
+import { filterActive, describeFilter, fmtDate, LOANMART_LOGO_PNG, BAND_LINES_SIZE, BAND_LINES_RIGHT, BAND_LINES_PATHS, BAND_LINES_STROKE } from "@req-2-report/shared";
 import ReportTable from "./ReportTable.jsx";
 import PreviewNote from "./PreviewNote.jsx";
 import { textStyle, part } from "../utils/look.js";

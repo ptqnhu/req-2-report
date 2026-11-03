@@ -1,4 +1,4 @@
-import { family, slicerKinds, defaultSlicerKind, DATE_PRESETS, presetRange } from "@report-builder/shared";
+import { family, slicerKinds, defaultSlicerKind, DATE_PRESETS, presetRange } from "@req-2-report/shared";
 import ReportDocument from "../components/ReportDocument.jsx";
 import SlicerBar from "../components/SlicerBar.jsx";
 

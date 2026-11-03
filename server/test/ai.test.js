@@ -3,17 +3,9 @@ import assert from "node:assert/strict";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadSchema } from "../src/services/ai/schema.js";
+import { listSchemas, loadSchema } from "../src/services/ai/schema.js";
 import { writeQuery } from "../src/services/ai/queryWriter.js";
-
-/** A pool whose first query returns the columns and second the foreign keys. */
-function schemaPool(cols, keys = []) {
-  const queries = [];
-  return {
-    queries,
-    request: () => ({ async query(q) { queries.push(q); return { recordset: queries.length === 1 ? cols : keys }; } }),
-  };
-}
+import { toColumns } from "../src/services/columns.js";
 
 /** A stand-in for the Claude CLI that records how it was run and prints a canned result. */
 function fakeCli(result) {
@@ -24,60 +16,44 @@ function fakeCli(result) {
 
 const answer = (structured_output) => ({ type: "result", subtype: "success", is_error: false, structured_output });
 
-test("schema lists tables, views, columns and foreign keys, and is read once per pool", async () => {
-  const pool = schemaPool([
-    { sch: "dbo", obj: "Customers", kind: "U ", col: "Id", type: "int" },
-    { sch: "dbo", obj: "Customers", kind: "U ", col: "Name", type: "nvarchar" },
-    { sch: "dbo", obj: "Loans", kind: "U ", col: "CustomerId", type: "int" },
-    { sch: "rpt", obj: "ActiveLoans", kind: "V ", col: "LoanId", type: "int" },
-  ], [{ fromTable: "dbo.Loans", fromCol: "CustomerId", toTable: "dbo.Customers", toCol: "Id" }]);
-  const { text, source } = await loadSchema(pool, { maxChars: 10_000 });
-  assert.equal(source, "database");
-  assert.equal(text, [
-    "dbo.Customers (table): Id int, Name nvarchar",
-    "dbo.Loans (table): CustomerId int",
-    "rpt.ActiveLoans (view): LoanId int",
-    "",
-    "Foreign keys:",
-    "dbo.Loans.CustomerId -> dbo.Customers.Id",
-  ].join("\n"));
-  await loadSchema(pool, { maxChars: 10_000 });
-  assert.equal(pool.queries.length, 2);
-});
-
-test("schema comes from the saved file for the database, ignoring case, without querying", async () => {
+async function schemaDir(files) {
   const dir = await mkdtemp(join(tmpdir(), "schemas-"));
-  await writeFile(join(dir, "AdventureWorks2022.txt"), "Sales.Customer (table): CustomerID int\n", "utf8");
-  const pool = schemaPool([]);
-  assert.deepEqual(await loadSchema(pool, { maxChars: 10_000, database: "adventureworks2022", dir }), { text: "Sales.Customer (table): CustomerID int", source: "file" });
-  assert.equal(pool.queries.length, 0);
+  for (const [name, text] of Object.entries(files)) await writeFile(join(dir, name), text, "utf8");
+  return dir;
+}
 
-  const other = schemaPool([{ sch: "dbo", obj: "T", kind: "U", col: "A", type: "int" }]);
-  assert.deepEqual(await loadSchema(other, { maxChars: 10_000, database: "Sales", dir }), { text: "dbo.T (table): A int", source: "database" });
-  assert.equal(other.queries.length, 2);
-  await assert.rejects(loadSchema(schemaPool([]), { maxChars: 5, database: "AdventureWorks2022", dir }), (e) => e.status === 413);
+test("schema comes from the database's file, ignoring case and # comment lines", async () => {
+  const dir = await schemaDir({ "APM.txt": "# notes\r\ndbo.loan (table): loan_no int\r\n# more\r\n" });
+  assert.equal(await loadSchema("apm", { maxChars: 10_000, dir }), "dbo.loan (table): loan_no int");
 });
 
-test("schema files skip # comment lines, and one with only comments is ignored", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "schemas-"));
-  await writeFile(join(dir, "APN.txt"), "# notes\r\ndbo.Loan (table): LoanID int\r\n# more\r\n", "utf8");
-  await writeFile(join(dir, "NLS.txt"), "# template\n# dbo.Example (table): ID int\n", "utf8");
-  assert.deepEqual(await loadSchema(schemaPool([]), { maxChars: 10_000, database: "APN", dir }), { text: "dbo.Loan (table): LoanID int", source: "file" });
-  const pool = schemaPool([{ sch: "dbo", obj: "T", kind: "U", col: "A", type: "int" }]);
-  assert.deepEqual(await loadSchema(pool, { maxChars: 10_000, database: "NLS", dir }), { text: "dbo.T (table): A int", source: "database" });
+test("schema refuses a database with no file or only a template, and one too large to send", async () => {
+  const dir = await schemaDir({ "NLS.txt": "# template\n# dbo.Example (table): ID int\n", "APM.txt": "dbo.loan (table): loan_no int\n" });
+  await assert.rejects(loadSchema("NLS", { maxChars: 10_000, dir }), (e) => e.status === 404);
+  await assert.rejects(loadSchema("Sales", { maxChars: 10_000, dir }), (e) => e.status === 404);
+  await assert.rejects(loadSchema("APM", { maxChars: 5, dir }), (e) => e.status === 413);
 });
 
-test("schema refuses databases too large to send, and empty ones", async () => {
-  const cols = [{ sch: "dbo", obj: "T", kind: "U", col: "A", type: "int" }];
-  await assert.rejects(loadSchema(schemaPool(cols), { maxChars: 5 }), (e) => e.status === 413);
-  await assert.rejects(loadSchema(schemaPool([]), { maxChars: 5 }), (e) => e.status === 422);
+test("the database list has only filled-in schema files, with their table counts", async () => {
+  const dir = await schemaDir({
+    "NLS.txt": "# template\n", "notes.md": "x",
+    "APM.txt": "dbo.loan (table): loan_no int\ndbo.v (view): a int\n\nForeign keys:\ndbo.v.a -> dbo.loan.loan_no\n",
+  });
+  assert.deepEqual(await listSchemas(dir), [{ name: "APM", tables: 2 }]);
+});
+
+test("the AI's column list becomes the report's columns, with unique names", () => {
+  const cols = toColumns([{ name: "loan_no", type: "int" }, { name: "", type: "decimal(18,4)" }, { name: "Loan_No", type: "varchar(10)" }]);
+  assert.deepEqual(cols.map((c) => [c.name, c.type, c.sqlType, c.unnamed, c.dup]),
+    [["loan_no", "Integer", "int", false, false], ["Column2", "Decimal", "decimal(18,4)", true, false], ["Loan_No_2", "Text", "varchar(10)", false, true]]);
+  assert.throws(() => toColumns([]), (e) => e.status === 422);
 });
 
 test("the cli backend runs Claude Code headless with no tools, asks for JSON and returns the query", async () => {
-  const cli = fakeCli(answer({ sql: " SELECT 1 AS One ", explanation: "Returns one." }));
+  const cli = fakeCli(answer({ sql: " SELECT 1 AS One ", explanation: "Returns one.", columns: [{ name: "One", type: "int" }] }));
   const out = await writeQuery({ schema: "dbo.T (table): A int", database: "Sales", messages: [{ role: "user", content: "one" }] },
     { model: "claude-opus-5-5", effort: "high", cliPath: "claude", run: cli.run });
-  assert.deepEqual(out, { sql: "SELECT 1 AS One", explanation: "Returns one." });
+  assert.deepEqual(out, { sql: "SELECT 1 AS One", explanation: "Returns one.", columns: [{ name: "One", type: "int" }] });
   const { args, input } = cli.calls[0];
   assert.equal(input, "one");
   for (const flag of ["-p", "--json-schema", "--system-prompt-file", "--no-session-persistence"]) assert.ok(args.includes(flag), flag);
@@ -113,7 +89,7 @@ test("the api backend caches the schema prompt, asks for JSON and returns the qu
   const client = fakeApiClient({ sql: " SELECT 1 AS One ", explanation: "Returns one." });
   const out = await writeQuery({ schema: "dbo.T (table): A int", database: "Sales", messages: [{ role: "user", content: "one" }] },
     { backend: "api", model: "claude-opus-5-5", effort: "high", client });
-  assert.deepEqual(out, { sql: "SELECT 1 AS One", explanation: "Returns one." });
+  assert.deepEqual(out, { sql: "SELECT 1 AS One", explanation: "Returns one.", columns: [] });
   const req = client.calls[0];
   assert.equal(req.model, "claude-opus-5-5");
   assert.equal(req.output_config.format.type, "json_schema");

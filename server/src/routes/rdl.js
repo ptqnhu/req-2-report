@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { effectiveColumns, keyBy, fileSlug, cleanDateDefault, cleanPrompts } from "@report-builder/shared";
+import { effectiveColumns, keyBy, fileSlug, cleanDateDefault, cleanPrompts } from "@req-2-report/shared";
 import { buildRdl, validateExport, exportWarnings } from "../rdl/buildRdl.js";
 import { planSlicers } from "../rdl/slicers.js";
+import { checkReadOnly } from "../services/queryGuard.js";
 import { asyncHandler } from "../lib/errors.js";
 import { requireString, optionalString, normalizeColumns, sanitizeTemplate, sanitizeExport } from "../lib/validate.js";
 
@@ -40,7 +41,8 @@ router.post("/rdl", asyncHandler(async (req, res) => {
 
   const warnings = exportWarnings(columns);
   const effCols = effectiveColumns(columns, tpl);
-  const problem = validateExport(exp) || (effCols.length ? "" : "Select at least one column to export.");
+  // The query runs later under the SSRS data source, so it gets the same read-only check as a preview.
+  const problem = checkReadOnly(sql) || validateExport(exp) || (effCols.length ? "" : "Select at least one column to export.");
   if (problem) return res.json({ rdl: null, fileName: null, warnings, problem });
 
   const colsByKey = keyBy(effCols);

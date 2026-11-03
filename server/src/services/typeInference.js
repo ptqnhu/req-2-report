@@ -1,4 +1,4 @@
-import { tokens } from "@report-builder/shared";
+import { tokens } from "@req-2-report/shared";
 
 /** Guesses a type from a column name. Returns [type, reason] or null. Rule order matters. */
 export function nameType(name) {

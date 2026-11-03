@@ -1,4 +1,4 @@
-import { TYPES, formatValue, distinctDisplays, displayOf } from "@report-builder/shared";
+import { TYPES, formatValue, distinctDisplays, displayOf } from "@req-2-report/shared";
 import TypeBadge from "../components/TypeBadge.jsx";
 
 // Used to show the display options when a column has no values in the preview rows

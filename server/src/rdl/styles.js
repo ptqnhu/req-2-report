@@ -1,4 +1,4 @@
-import { NUMERIC, numberSpec, dateSpec, THEME_COLORS } from "@report-builder/shared";
+import { NUMERIC, numberSpec, dateSpec, THEME_COLORS } from "@req-2-report/shared";
 
 export const NET_TYPE = {
   Text: "System.String", Integer: "System.Int32", Decimal: "System.Decimal", Currency: "System.Decimal",

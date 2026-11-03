@@ -1,8 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_TPL, formatValue, displayOf, DISPLAY_OPTIONS, textCase, distinctDisplays } from "@report-builder/shared";
+import { DEFAULT_TPL, formatValue, displayOf, DISPLAY_OPTIONS, textCase, distinctDisplays } from "@req-2-report/shared";
 import { netFormat } from "../src/rdl/styles.js";
-import { excelFormat } from "../src/export/xlsx.js";
 
 const tpl = { ...DEFAULT_TPL, currency: "$", decimals: 2, dateFormat: "MM/DD/YYYY" };
 const col = (type, display, name = "amount") => ({ type, display, name });
@@ -41,15 +40,13 @@ test("dates, yes/no and text", () => {
   assert.equal(formatValue(d, col("DateTime", "date"), tpl), "03/14/2026");
   assert.equal(formatValue(d, col("DateTime", "time"), tpl), "15:30");
   assert.equal(netFormat(col("DateTime", "time"), tpl), "HH:mm");
-  // with seconds: the preview, the .rdl and Excel all agree
+  // with seconds: the preview and the .rdl agree
   const ds = new Date(2026, 2, 14, 15, 30, 45);
   assert.equal(formatValue(ds, col("DateTime", "auto"), tpl), "03/14/2026 15:30");
   assert.equal(formatValue(ds, col("DateTime", "seconds"), tpl), "03/14/2026 15:30:45");
   assert.equal(formatValue(ds, col("DateTime", "timesec"), tpl), "15:30:45");
   assert.equal(netFormat(col("DateTime", "seconds"), tpl), "MM'/'dd'/'yyyy HH:mm:ss");
   assert.equal(netFormat(col("DateTime", "timesec"), tpl), "HH:mm:ss");
-  assert.equal(excelFormat(col("DateTime", "seconds"), tpl), "mm/dd/yyyy hh:mm:ss");
-  assert.equal(excelFormat(col("DateTime", "timesec"), tpl), "hh:mm:ss");
   assert.equal(formatValue(false, col("Boolean", "tf"), tpl), "False");
   assert.equal(formatValue(false, col("Boolean", "check"), tpl), "");
   assert.equal(formatValue("West Coast", col("Text", "upper"), tpl), "WEST COAST");

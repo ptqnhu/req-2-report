@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { templateStyle } from "@report-builder/shared";
+import { templateStyle } from "@req-2-report/shared";
 import TypeBadge from "../components/TypeBadge.jsx";
 import ReportDocument from "../components/ReportDocument.jsx";
 import TemplateSettings from "../components/TemplateSettings.jsx";

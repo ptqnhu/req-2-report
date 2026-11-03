@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DEFAULT_TPL, templateStyle } from "@report-builder/shared";
+import { DEFAULT_TPL, templateStyle } from "@req-2-report/shared";
 import UserBadge from "./components/UserBadge.jsx";
 import TemplateDesigner from "./components/TemplateDesigner.jsx";
 import { useTemplates } from "./hooks/useTemplates.js";
@@ -37,7 +37,7 @@ export default function TemplatesPage() {
       <div className="rb-shell">
         <header className="rb-rail">
           <div className="rail-end">
-            <a className="btn btn-sm" href="#/build/ssrs">Create SSRS report</a>
+            <a className="btn btn-sm" href="#/build">Create SSRS report</a>
             <UserBadge />
           </div>
         </header>

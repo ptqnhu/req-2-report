@@ -1,5 +1,5 @@
 {
-  "name": "report-builder",
+  "name": "req-2-report",
   "private": true,
   "version": "1.0.0",
   "workspaces": ["shared", "server", "client"],

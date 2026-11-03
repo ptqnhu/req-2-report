@@ -1,4 +1,4 @@
-import { OPS, NO_VALUE_OPS, family, filterActive, describeFilter, parseLocalDate } from "@report-builder/shared";
+import { OPS, NO_VALUE_OPS, family, filterActive, describeFilter, parseLocalDate } from "@req-2-report/shared";
 import { vbStr, rdlIdent } from "./xml.js";
 
 const RDL_OPS = {

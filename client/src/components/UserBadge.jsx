@@ -4,8 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 const USER = { name: "Jillian Phan", role: "BI Developer" };
 
 /**
- * Signing out: the app has no accounts yet, so this starts over on the home page. Reloading closes the database
- * connections (each page disconnects on "pagehide").
+ * Signing out: the app has no accounts yet, so this starts over on the home page.
  */
 const signOut = () => { location.href = location.pathname; };
 

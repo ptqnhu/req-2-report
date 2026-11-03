@@ -1,4 +1,4 @@
-import { family, BLANK, liveSlicers, parseLocalDate, itemPrompt, slicerName } from "@report-builder/shared";
+import { family, BLANK, liveSlicers, parseLocalDate, itemPrompt, slicerName } from "@req-2-report/shared";
 import { xesc, vbStr, rdlIdent } from "./xml.js";
 import { NET_DATE } from "./styles.js";
 import { distinctValuesQuery } from "./sqlWrap.js";

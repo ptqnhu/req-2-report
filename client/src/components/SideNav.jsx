@@ -4,15 +4,13 @@ import { Icon } from "./Icon.jsx";
 
 /** The main menu: [id, link, label, icon]. `id` matches what SideNav's `current` gets. */
 const TOOLS = [
-  ["build/charts", "#/build/charts", "Charts", "spark"],
-  ["build/ssrs", "#/build/ssrs", "SSRS report", "file"],
-  ["build/adhoc", "#/build/adhoc", "Export data", "database"],
+  ["build", "#/build", "SSRS report", "file"],
   ["templates", "#/templates", "Templates", "layers"],
 ];
 
 /**
  * The menu on the left of every page: the app's logo (click it to minimize or expand the menu), then the main
- * menu of report tools. `current` is the page on show ("build/<kind>" or "templates").
+ * menu of report tools. `current` is the page on show ("build" or "templates").
  */
 export default function SideNav({ current }) {
   const here = (on) => (on ? { className: "side-link current", "aria-current": "page" } : { className: "side-link" });
@@ -41,7 +39,7 @@ export default function SideNav({ current }) {
 }
 
 /** Whether the menu is minimized, kept in this browser. */
-const MINI_KEY = "report-builder.menuMinimized";
+const MINI_KEY = "req-2-report.menuMinimized";
 function loadFlag(key) {
   try { return localStorage.getItem(key) === "1"; } catch { return false; }
 }

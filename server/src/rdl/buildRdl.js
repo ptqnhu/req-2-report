@@ -1,4 +1,4 @@
-import { NUMERIC, idLike, alignOf, BRAND, LOANMART_LOGO_PNG, LOGO_SIZE, slicerItems, layoutGrid, booleanLabels, displayOf } from "@report-builder/shared";
+import { NUMERIC, idLike, alignOf, BRAND, LOANMART_LOGO_PNG, LOGO_SIZE, slicerItems, layoutGrid, booleanLabels, displayOf } from "@req-2-report/shared";
 import { xesc, lit, inch, guid, rdlIdent, vbStr } from "./xml.js";
 import { NET_TYPE, NET_DATE, THEME_RDL, DENSITY_RDL, netFormat, colWidth } from "./styles.js";
 import { textbox } from "./textbox.js";

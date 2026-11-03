@@ -1,8 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_TPL, DEFAULT_EXPORT, effectiveColumns, keyBy, suggestSlicers, applySlicers, sliceOptions, liveSlicers, describeSlices } from "@report-builder/shared";
-import { fakePool, describeRow } from "./helpers/fakeSqlServer.js";
-import { describeQuery } from "../src/services/db/describe.js";
+import { DEFAULT_TPL, DEFAULT_EXPORT, effectiveColumns, keyBy, suggestSlicers, applySlicers, sliceOptions, liveSlicers, describeSlices } from "@req-2-report/shared";
+import { toColumns } from "../src/services/columns.js";
 import { buildRdl } from "../src/rdl/buildRdl.js";
 import { planSlicers } from "../src/rdl/slicers.js";
 import { distinctValuesQuery, countQuery } from "../src/rdl/sqlWrap.js";
@@ -34,10 +33,10 @@ test("count SQL wraps the query the same way", () => {
 });
 
 const SQL = "SELECT order_id, status, region, order_date, is_paid, revenue, discount_rate FROM dbo.Orders ORDER BY order_date";
-const columns = await describeQuery(fakePool({ describe: [
-  describeRow(1, "order_id", "int"), describeRow(2, "status", "nvarchar(20)"), describeRow(3, "region", "nvarchar(20)"),
-  describeRow(4, "order_date", "date"), describeRow(5, "is_paid", "bit"), describeRow(6, "revenue", "decimal(12,2)"), describeRow(7, "discount_rate", "decimal(5,4)"),
-] }), SQL);
+const columns = toColumns([
+  { name: "order_id", type: "int" }, { name: "status", type: "nvarchar(20)" }, { name: "region", type: "nvarchar(20)" },
+  { name: "order_date", type: "date" }, { name: "is_paid", type: "bit" }, { name: "revenue", type: "decimal(12,2)" }, { name: "discount_rate", type: "decimal(5,4)" },
+]);
 const effCols = effectiveColumns(columns, DEFAULT_TPL);
 const colsByKey = keyBy(effCols);
 const k = (n) => effCols.find((c) => c.name === n).key;
@@ -48,7 +47,7 @@ const SLICERS = [
 const build = (slicers, tplOver = {}, paramLayout = {}) => {
   const tpl = { ...DEFAULT_TPL, ...tplOver };
   return buildRdl({ sql: SQL, columns, effCols, tpl, title: "Orders", desc: "", filters: [], colsByKey, sort: null,
-    exp: { ...DEFAULT_EXPORT, server: "s", database: "d" }, slicers: planSlicers(SQL, columns, slicers, colsByKey).slicers, paramLayout });
+    exp: { ...DEFAULT_EXPORT, dsMode: "embedded", server: "s", database: "d" }, slicers: planSlicers(SQL, columns, slicers, colsByKey).slicers, paramLayout });
 };
 
 test("slicers become report parameters that filter the main dataset, starting on All", () => {
@@ -102,7 +101,7 @@ test("suggestions, choices and the preview's slicing", () => {
 });
 
 test("date filters can start on a rolling or fixed default", async () => {
-  const { presetRange, cleanDateDefault, slicerDefaults } = await import("@report-builder/shared");
+  const { presetRange, cleanDateDefault, slicerDefaults } = await import("@req-2-report/shared");
   const day = new Date(2026, 4, 20); // Wed 20 May 2026
   assert.deepEqual(presetRange({ preset: "last7" }, day), { from: "2026-05-14", to: "2026-05-20" });
   assert.deepEqual(presetRange({ preset: "lastmonth" }, day), { from: "2026-04-01", to: "2026-04-30" });
@@ -122,7 +121,7 @@ test("date filters can start on a rolling or fixed default", async () => {
 });
 
 test("parameter bar grid: saved positions, swaps, growth and the exported layout", async () => {
-  const { layoutGrid, slicerItems } = await import("@report-builder/shared");
+  const { layoutGrid, slicerItems } = await import("@req-2-report/shared");
   const ids = ["a", "b", "c", "d", "e"];
   assert.deepEqual(layoutGrid(ids, {}), { cols: 4, rows: 2, cells: { a: [0, 0], b: [0, 1], c: [0, 2], d: [0, 3], e: [1, 0] } });
   // saved spots win (the earlier filter on a clash); off-grid and junk positions fall into the first free cells
@@ -143,7 +142,7 @@ test("parameter bar grid: saved positions, swaps, growth and the exported layout
 });
 
 test("renamed filters: prompts, the Showing line and cleaning", async () => {
-  const { cleanPrompts, describeSlices } = await import("@report-builder/shared");
+  const { cleanPrompts, describeSlices } = await import("@req-2-report/shared");
   const renamed = [
     { col: k("status"), kind: "list", prompts: { main: "Order status <all>" } },
     { col: k("order_date"), kind: "range", prompts: { from: "Start", to: "" } },

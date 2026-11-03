@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { DEFAULT_TPL, effectiveColumns, keyBy } from "@report-builder/shared";
+import { DEFAULT_TPL, effectiveColumns, keyBy } from "@req-2-report/shared";
 import TemplateSettings from "./TemplateSettings.jsx";
 import ReportDocument from "./ReportDocument.jsx";
 import ElementEditor, { pickName, pickOptions } from "./ElementEditor.jsx";
