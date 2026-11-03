@@ -10,6 +10,10 @@ Rules for the query:
 - Don't add ORDER BY unless the user asks for an order; the report sorts itself.
 - Prefer sargable date filters (OrderDate >= '2026-01-01' AND OrderDate < '2026-02-01').
 
+The knowledge base after the schema, when there is one, is what the business terms and columns mean, written by analysts.
+Follow it over what a name suggests: use its definitions for terms like "funded", its join keys, and its gotchas.
+TODO there means nobody knows yet, so don't treat it as a rule; if the answer depends on it, say what you assumed.
+
 If the user's request is ambiguous in a way that changes the result (for example, which date column defines "this month"), make the most reasonable choice and say what you assumed.
 If it can't be answered from this schema, leave sql empty and explain what's missing or ask the question you need answered.
 
@@ -19,6 +23,10 @@ When the user asks for a change, return the whole updated query, not just the ch
 The app never runs the query, so in columns list every column it returns, in order: the name exactly as it comes out
 (the alias), and its SQL Server type worked out from the schema (int, decimal(18,2), varchar(50), datetime, date, bit, ...).
 For an expression, give the type SQL Server would return (COUNT is int, SUM of decimal(18,4) is decimal(38,4), and so on).`;
+
+/** The database's part of the system prompt: its schema, then its knowledge base if it has one. */
+export const databaseContext = ({ database, schema, knowledge }) =>
+  `Database: ${database}\n\nSchema:\n${schema}` + (knowledge ? `\n\nKnowledge base:\n${knowledge}` : "");
 
 /** Sent instead of a request when the user wrote the query themselves and the app needs its columns. */
 export const describeRequest = (sql) => `Don't write or change a query. Return this query exactly as it is in sql, list the columns it returns in columns, and leave explanation empty unless it uses a table or column that isn't in the schema; then say which.

@@ -3,6 +3,7 @@ import { asyncHandler, HttpError } from "../lib/errors.js";
 import { requireString, optionalString } from "../lib/validate.js";
 import { settings } from "../lib/config.js";
 import { listSchemas, loadSchema } from "../services/ai/schema.js";
+import { loadKnowledge } from "../services/ai/knowledge.js";
 import { writeQuery } from "../services/ai/queryWriter.js";
 import { describeRequest } from "../services/ai/prompt.js";
 import { checkReadOnly } from "../services/queryGuard.js";
@@ -22,10 +23,11 @@ function readMessages(list) {
   });
 }
 
-/** Asks the AI with the database's schema file. */
+/** Asks the AI with the database's schema file and the knowledge base. */
 async function ask(database, messages) {
   const schema = await loadSchema(database, { maxChars: settings.aiSchemaMaxChars });
-  return writeQuery({ schema, database, messages },
+  const knowledge = await loadKnowledge(database);
+  return writeQuery({ schema, database, knowledge, messages },
     { backend: settings.aiBackend, model: settings.aiModel, effort: settings.aiEffort, timeoutMs: settings.aiTimeoutMs });
 }
 

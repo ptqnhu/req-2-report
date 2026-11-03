@@ -8,7 +8,7 @@ export const AI_BACKENDS = Object.keys(BACKENDS);
 
 /**
  * Asks Claude for a query.
- * @param {{schema: string, database: string, messages: {role: "user"|"assistant", content: string}[]}} input
+ * @param {{schema: string, database: string, knowledge?: string, messages: {role: "user"|"assistant", content: string}[]}} input
  * @param {{backend?: "cli"|"api", model?: string, effort?: string, timeoutMs?: number}} options the rest go to the backend
  * @returns {Promise<{sql: string, explanation: string}>}
  */

@@ -69,6 +69,7 @@ req-2-report/
 |---|---|
 | What the AI is told | `server/src/services/ai/prompt.js` |
 | A database's tables and columns | `server/schemas/<database>.txt` |
+| What business terms and columns mean | `knowledge/` (sent to the AI with the schema; see `knowledge/README.md`) |
 | How SQL Server types map to display types | `server/src/services/typeInference.js` |
 | Which queries are allowed | `server/src/services/queryGuard.js` |
 | What the .rdl file contains | `server/src/rdl/` |
@@ -128,6 +129,8 @@ dbo.loan_person.loan_no -> dbo.loan.loan_no
 
 Lines starting with `#` are ignored, so a file with nothing else (a template) counts as no file. To export a file from a database, run `server/scripts/schema.sql` against it from a computer that can reach it, for example `sqlcmd -S <server> -d NLS -E -C -i server/scripts/schema.sql -y 0 -f 65001 -o server/schemas/NLS.txt`. A file can also be written by hand, as `APM.txt` is from the APM data dictionary. Changes apply to the next AI request.
 
+With the schema, the AI is sent the knowledge base: `knowledge/glossary.yaml`, `joins.yaml` and `gotchas.md`, plus `knowledge/tables/<database>/*.yaml` for the chosen database. Whole-line `#` comments in the YAML files are left out. `golden/` is never sent, since those queries test the assistant. Changes apply to the next AI request too.
+
 ## Tests
 
 ```bash
@@ -153,7 +156,7 @@ Covers the read-only query guard, schema files, the AI backends and column list,
 
 - **No database access.** The app holds no database credentials and never runs a query. The report's data source, and who can read it, is set up on the SSRS server.
 - **Read-only queries.** The app refuses anything other than a single `SELECT`/`WITH` statement, both when reading columns and when building the `.rdl`. The SSRS data source should still use a read-only login: that's the real protection, since the report runs the query.
-- **The AI assistant** sends the chosen database's schema file (table, view and column names and types) plus what the user types to Anthropic, through the Claude Code CLI or the Claude API depending on `AI_BACKEND`. There is no row data to send, and the CLI runs with every tool turned off, so it can't read files or run commands.
+- **The AI assistant** sends the chosen database's schema file (table, view and column names and types), the knowledge base in `knowledge/` (so keep row data and secrets out of it) plus what the user types to Anthropic, through the Claude Code CLI or the Claude API depending on `AI_BACKEND`. There is no row data to send, and the CLI runs with every tool turned off, so it can't read files or run commands.
 - The app has no user accounts of its own. Run it on your internal network, or put it behind your existing single sign-on.
 
 ## Uploading to SSRS

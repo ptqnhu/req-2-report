@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { HttpError } from "../../lib/errors.js";
-import { INSTRUCTIONS, OUTPUT_SCHEMA, toAnswer } from "./prompt.js";
+import { INSTRUCTIONS, OUTPUT_SCHEMA, databaseContext, toAnswer } from "./prompt.js";
 
 let defaultClient;
 const getClient = () => (defaultClient ??= new Anthropic());
@@ -20,7 +20,7 @@ function friendlyError(e) {
 }
 
 /** Asks Claude for a query through the Claude API, with ANTHROPIC_API_KEY. */
-export async function writeQueryWithApi({ schema, database, messages }, { model, effort, client } = {}) {
+export async function writeQueryWithApi({ schema, database, knowledge, messages }, { model, effort, client } = {}) {
   let response;
   try {
     response = await (client ?? getClient()).beta.messages.create({
@@ -31,8 +31,8 @@ export async function writeQueryWithApi({ schema, database, messages }, { model,
       output_config: { effort, format: { type: "json_schema", schema: OUTPUT_SCHEMA } },
       system: [
         { type: "text", text: INSTRUCTIONS },
-        // The schema is the large, unchanging part, so it's cached between questions about the same database.
-        { type: "text", text: `Database: ${database}\n\nSchema:\n${schema}`, cache_control: { type: "ephemeral" } },
+        // The schema and knowledge base are the large, unchanging part, so they're cached between questions about the same database.
+        { type: "text", text: databaseContext({ database, schema, knowledge }), cache_control: { type: "ephemeral" } },
       ],
       messages,
     });

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { HttpError } from "../../lib/errors.js";
 import { findClaudeCli } from "./claudeCli.js";
-import { INSTRUCTIONS, OUTPUT_SCHEMA, toAnswer } from "./prompt.js";
+import { INSTRUCTIONS, OUTPUT_SCHEMA, databaseContext, toAnswer } from "./prompt.js";
 
 /** Earlier turns become a transcript, since each CLI run starts a fresh session. */
 function toPrompt(messages) {
@@ -43,13 +43,13 @@ function runCli(cli, args, input, { cwd, timeoutMs }) {
  * Asks Claude for a query by running the Claude Code CLI headless (claude -p), signed in with
  * the account that's logged in to Claude Code on this computer. No tools, no saved session.
  */
-export async function writeQueryWithCli({ schema, database, messages }, { model, effort, cliPath, timeoutMs = 180_000, run = runCli } = {}) {
-  // The system prompt (with the whole schema) goes in a file: Windows caps a command line at 32,767 characters.
+export async function writeQueryWithCli({ schema, database, knowledge, messages }, { model, effort, cliPath, timeoutMs = 180_000, run = runCli } = {}) {
+  // The system prompt (with the whole schema and knowledge base) goes in a file: Windows caps a command line at 32,767 characters.
   const dir = await mkdtemp(path.join(tmpdir(), "rb-ai-"));
   let printed;
   try {
     const promptFile = path.join(dir, "system.txt");
-    await writeFile(promptFile, `${INSTRUCTIONS}\n\nDatabase: ${database}\n\nSchema:\n${schema}`, "utf8");
+    await writeFile(promptFile, `${INSTRUCTIONS}\n\n${databaseContext({ database, schema, knowledge })}`, "utf8");
     const args = [
       "-p", "--output-format", "json", "--json-schema", JSON.stringify(OUTPUT_SCHEMA),
       "--system-prompt-file", promptFile,

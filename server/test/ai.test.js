@@ -1,9 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { listSchemas, loadSchema } from "../src/services/ai/schema.js";
+import { loadKnowledge } from "../src/services/ai/knowledge.js";
 import { writeQuery } from "../src/services/ai/queryWriter.js";
 import { toColumns } from "../src/services/columns.js";
 
@@ -47,6 +48,41 @@ test("the AI's column list becomes the report's columns, with unique names", () 
   assert.deepEqual(cols.map((c) => [c.name, c.type, c.sqlType, c.unnamed, c.dup]),
     [["loan_no", "Integer", "int", false, false], ["Column2", "Decimal", "decimal(18,4)", true, false], ["Loan_No_2", "Text", "varchar(10)", false, true]]);
   assert.throws(() => toColumns([]), (e) => e.status === 422);
+});
+
+test("knowledge: shared files and the database's tables, without YAML comments or golden queries", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "knowledge-"));
+  const files = {
+    "glossary.yaml": "# header\n- term: funded\n  sql: x  # inline note stays\n",
+    "gotchas.md": "# Gotchas\n\n- trap\n",
+    "tables/APM/loan.yaml": "name: APM.dbo.loan\n",
+    "tables/NLS/acct.yaml": "name: NLS.dbo.acct\n",
+    "golden/q1.yaml": "request: secret answer\n",
+  };
+  for (const [name, text] of Object.entries(files)) {
+    await mkdir(dirname(join(dir, name)), { recursive: true });
+    await writeFile(join(dir, name), text, "utf8");
+  }
+  const text = await loadKnowledge("apm", dir);
+  assert.match(text, /^### glossary\.yaml\n- term: funded\n  sql: x  # inline note stays\n\n### gotchas\.md\n# Gotchas/);
+  assert.match(text, /### tables\/APM\/loan\.yaml\nname: APM\.dbo\.loan$/);
+  assert.doesNotMatch(text, /# header|NLS|secret|joins/);
+  assert.equal(await loadKnowledge("APM", join(dir, "missing")), "");
+});
+
+test("both backends put the knowledge base after the schema", async () => {
+  const input = { schema: "dbo.T (table): A int", database: "Sales", knowledge: "### gotchas.md\n- trap", messages: [{ role: "user", content: "q" }] };
+  const client = fakeApiClient({ sql: "SELECT 1", explanation: "" });
+  await writeQuery(input, { backend: "api", client });
+  assert.match(client.calls[0].system.at(-1).text, /Schema:\ndbo\.T[\s\S]*Knowledge base:\n### gotchas\.md\n- trap$/);
+
+  let prompt;
+  const run = async (cli, args) => {
+    prompt = await readFile(args[args.indexOf("--system-prompt-file") + 1], "utf8");
+    return JSON.stringify(answer({ sql: "SELECT 1", explanation: "" }));
+  };
+  await writeQuery(input, { cliPath: "claude", run });
+  assert.match(prompt, /Schema:\ndbo\.T[\s\S]*Knowledge base:\n### gotchas\.md\n- trap$/);
 });
 
 test("the cli backend runs Claude Code headless with no tools, asks for JSON and returns the query", async () => {
