@@ -49,6 +49,11 @@ test("data source: Windows uses integrated security; SQL login leaves credential
   assert.match(build({ dsMode: "shared", dsRef: "/Data Sources/Shop" }), /<DataSourceReference>\/Data Sources\/Shop<\/DataSourceReference>/);
 });
 
+test("data source: a blank shared path becomes a placeholder named after the database", () => {
+  assert.match(build({ dsMode: "shared", dsRef: "  ", database: "Shop" }), /<DataSourceReference>\/Data Sources\/Shop<\/DataSourceReference>/);
+  assert.match(build({ dsMode: "shared", dsRef: "", database: "" }), /<DataSourceReference>\/Data Sources\/ReportData<\/DataSourceReference>/);
+});
+
 test("fixed filters are embedded; parameter mode creates report parameters", () => {
   assert.match(build({ filterMode: "fixed" }), /<Operator>Between<\/Operator>/);
   const p = build({ filterMode: "params" });
@@ -106,7 +111,8 @@ test("other styles keep their own header and no logo", () => {
 });
 
 test("export settings and warnings", () => {
-  assert.ok(validateExport({ ...DEFAULT_EXPORT }));
+  assert.equal(validateExport({ ...DEFAULT_EXPORT, dsMode: "shared", dsRef: "" }), "");
+  assert.ok(validateExport({ ...DEFAULT_EXPORT, dsMode: "embedded" }));
   assert.equal(validateExport({ ...DEFAULT_EXPORT, dsMode: "embedded", server: "s", database: "d" }), "");
   assert.equal(exportWarnings([{ name: "Column3", unnamed: true }])[0].startsWith("Column 3 has no name"), true);
 });

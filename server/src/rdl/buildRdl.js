@@ -9,10 +9,18 @@ import { slicerRdl } from "./slicers.js";
 const DATASET = "MainDataSet";
 const DATASOURCE = "MainDataSource";
 
-/** Returns a message if the export settings are incomplete, otherwise "". */
+/** Returns a message if the export settings are incomplete, otherwise "". A blank shared path is allowed (see dataSourcePath). */
 export function validateExport(exp) {
-  if (exp.dsMode === "shared") return exp.dsRef.trim() ? "" : "Enter the shared data source path to export.";
+  if (exp.dsMode === "shared") return "";
   return exp.server.trim() && exp.database.trim() ? "" : "Enter the server and database to export.";
+}
+
+/**
+ * The shared data source the .rdl points at. Left blank, it's a made-up path named after the database: SSRS still
+ * accepts the upload, and the real data source is picked afterwards on the report's Manage > Data sources page.
+ */
+export function dataSourcePath(exp) {
+  return exp.dsRef.trim() || `/Data Sources/${exp.database.trim() || "ReportData"}`;
 }
 
 /** Things in the query that would break or misbehave in SSRS. */
@@ -248,7 +256,7 @@ ${textbox({ name: nm("PageNumber"), value: `="Page " & Globals!PageNumber & " of
   // to be stored on the report server after upload (Manage > Data sources).
   const integrated = exp.dsAuth !== "sql";
   const dataSource = exp.dsMode === "shared"
-    ? `<DataSourceReference>${xesc(exp.dsRef.trim())}</DataSourceReference>`
+    ? `<DataSourceReference>${xesc(dataSourcePath(exp))}</DataSourceReference>`
     : `<ConnectionProperties><DataProvider>SQL</DataProvider><ConnectString>${xesc(`Data Source=${exp.server.trim()};Initial Catalog=${exp.database.trim()}`)}</ConnectString>${integrated ? "<IntegratedSecurity>true</IntegratedSecurity>" : ""}</ConnectionProperties><rd:SecurityType>${integrated ? "Integrated" : "DataBase"}</rd:SecurityType>`;
   const fieldsXml = columns.map((c) => `<Field Name="${fieldOf[c.key]}"><DataField>${xesc(c.name)}</DataField><rd:TypeName>${NET_TYPE[c.type]}</rd:TypeName></Field>`).join("\n");
   const allFilters = [...fl.filters, ...sl.filters];

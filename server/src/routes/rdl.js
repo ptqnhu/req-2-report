@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { effectiveColumns, keyBy, fileSlug, cleanDateDefault, cleanPrompts } from "@req-2-report/shared";
-import { buildRdl, validateExport, exportWarnings } from "../rdl/buildRdl.js";
+import { buildRdl, validateExport, exportWarnings, dataSourcePath } from "../rdl/buildRdl.js";
 import { planSlicers } from "../rdl/slicers.js";
 import { checkReadOnly } from "../services/queryGuard.js";
 import { asyncHandler } from "../lib/errors.js";
@@ -44,6 +44,10 @@ router.post("/rdl", asyncHandler(async (req, res) => {
   // The query runs later under the SSRS data source, so it gets the same read-only check as a preview.
   const problem = checkReadOnly(sql) || validateExport(exp) || (effCols.length ? "" : "Select at least one column to export.");
   if (problem) return res.json({ rdl: null, fileName: null, warnings, problem });
+
+  if (exp.dsMode === "shared" && !exp.dsRef.trim()) {
+    warnings.push(`No shared data source path entered, so the file points at “${dataSourcePath(exp)}”. After uploading, open the report's Manage page, choose Data sources, and pick the real one.`);
+  }
 
   const colsByKey = keyBy(effCols);
   const plan = planSlicers(sql, columns, slicers, colsByKey);

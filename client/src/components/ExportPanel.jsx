@@ -53,9 +53,9 @@ export default function ExportPanel({ exp, onChange, result }) {
             </>
           ) : (
             <div className="fld" style={{ marginTop: 10 }}>
-              <label className="fld-label" htmlFor="exp-dsref">Shared data source path</label>
-              <input id="exp-dsref" className="inp" value={exp.dsRef} onChange={(e) => set({ dsRef: e.target.value })} placeholder="/Data Sources/SalesDB" aria-describedby="exp-dsref-hint" />
-              <span id="exp-dsref-hint" className="fld-hint" style={{ display: "block" }}>The path of a data source already set up on your report server. If it doesn't link on upload, open the report's Manage page and choose Data sources.</span>
+              <label className="fld-label" htmlFor="exp-dsref">Shared data source path (optional)</label>
+              <input id="exp-dsref" className="inp" value={exp.dsRef} onChange={(e) => set({ dsRef: e.target.value })} placeholder={`/Data Sources/${exp.database || "ReportData"}`} aria-describedby="exp-dsref-hint" />
+              <span id="exp-dsref-hint" className="fld-hint" style={{ display: "block" }}>The path of a data source already set up on your report server. Leave it blank to fill it in later: after uploading, open the report's Manage page, choose Data sources, and pick the real one.</span>
             </div>
           )}
         </div>
