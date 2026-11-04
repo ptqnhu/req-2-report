@@ -6,4 +6,3 @@ server/data/*.json
 # Business data: keep local, never commit
 server/schemas/*
 knowledge/*
-!knowledge/README.md
