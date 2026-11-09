@@ -157,3 +157,10 @@ test("renamed filters: prompts, the Showing line and cleaning", async () => {
   assert.deepEqual(cleanPrompts({ main: "  Region  ", from: 5, to: "x".repeat(150), evil: "y" }), { main: "Region", to: "x".repeat(100) });
   assert.equal(cleanPrompts({ main: "   " }), undefined);
 });
+
+test("wrapped SQL keeps the READ UNCOMMITTED line in front", () => {
+  const iso = "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;";
+  assert.equal(flat(countQuery("set transaction isolation level read uncommitted\nSELECT a FROM t")),
+    `${iso} SELECT COUNT_BIG(*) AS n FROM ( SELECT a FROM t ) AS src`);
+  assert.equal(flat(distinctValuesQuery(`${iso}\nWITH x AS (SELECT a FROM t) SELECT a FROM x`, "a")).startsWith(`${iso} WITH x AS (SELECT a FROM t) SELECT DISTINCT`), true);
+});

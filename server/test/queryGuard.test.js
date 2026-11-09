@@ -34,3 +34,12 @@ test("finds the main table for a default title", () => {
   assert.equal(firstTableName("SELECT a FROM dbo.[Orders] o JOIN x ON 1=1"), "Orders");
   assert.equal(firstTableName("WITH c AS (SELECT * FROM inner_t) SELECT * FROM c"), "c");
 });
+
+test("allows a leading SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED and nothing else", () => {
+  assert.equal(checkReadOnly("SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;\nSELECT a FROM t"), "");
+  assert.equal(checkReadOnly("set transaction isolation level read uncommitted\n;WITH x AS (SELECT 1 AS a) SELECT a FROM x"), "");
+  assert.match(checkReadOnly("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE; SELECT a FROM t"), /Only SELECT/);
+  assert.match(checkReadOnly("SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED; DELETE FROM t"), /Only SELECT/);
+  assert.match(checkReadOnly("SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED; SELECT 1; DROP TABLE t"), /single SELECT/);
+  assert.match(checkReadOnly("SELECT a FROM t; SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED"), /single SELECT/);
+});

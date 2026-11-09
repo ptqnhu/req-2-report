@@ -1,5 +1,6 @@
 import { BLANK } from "@req-2-report/shared";
 import { mask } from "../services/sqlMask.js";
+import { splitIsolation } from "../services/queryGuard.js";
 
 /** Matches of re that are outside any parentheses. */
 function topLevel(masked, re) {
@@ -13,17 +14,18 @@ export const quoteName = (name) => `[${String(name).replace(/]/g, "]]")}]`;
 
 /**
  * Splits the report query so it can become a derived table: [prefix]SELECT … FROM (<body>) AS src[option].
- * A leading WITH goes in prefix, OPTION (…) moves to the outside, and a final ORDER BY is dropped unless TOP or
- * OFFSET needs it. Returns null when the query can't be wrapped (FOR XML/JSON).
+ * A leading SET TRANSACTION ISOLATION LEVEL and a leading WITH go in prefix, OPTION (…) moves to the outside, and a
+ * final ORDER BY is dropped unless TOP or OFFSET needs it. Returns null when the query can't be wrapped (FOR XML/JSON).
  */
 function derivedTable(sql) {
-  let body = String(sql).trim().replace(/^;+\s*/, "").replace(/;\s*$/, "");
-  let prefix = "", option = "";
+  const { isolation, rest } = splitIsolation(sql);
+  let body = rest.trim().replace(/^;+\s*/, "").replace(/;\s*$/, "");
+  let prefix = isolation ? isolation + "\n" : "", option = "";
 
   if (/^with\b/i.test(mask(body))) {
     const first = topLevel(mask(body), /\bselect\b/gi)[0];
     if (!first) return null;
-    prefix = body.slice(0, first.index);
+    prefix += body.slice(0, first.index);
     body = body.slice(first.index);
   }
   if (topLevel(mask(body), /\bfor\s+(xml|json|browse)\b/gi).length) return null;
