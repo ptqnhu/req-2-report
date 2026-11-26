@@ -6,8 +6,10 @@ import { fileURLToPath } from "node:url";
 export const KNOWLEDGE_DIR = fileURLToPath(new URL("../../../../knowledge/", import.meta.url));
 
 // golden/ is left out on purpose: those verified queries test the assistant, so it mustn't see them.
-// glossary/ holds one YAML file per topic (customer, collection...), all of them sent.
-const SHARED_FILES = ["joins.yaml", "lifecycle.yaml", "gotchas.md"];
+// glossary/ holds one YAML file per topic (customer, collection...), all of them sent. Every other .yaml or .md file
+// at the top of knowledge/ (joins.yaml, gotchas.md...) is sent too, except README.md, which is for people.
+const SHARED = /\.(ya?ml|md)$/i;
+const NOT_SENT = new Set(["readme.md"]);
 
 /** A file's text, without whole-line `#` comments in YAML (Markdown `#` lines are headings); "" if it's missing. */
 async function readText(file) {
@@ -22,12 +24,13 @@ const list = (dir) => readdir(dir).catch(() => []);
 
 /**
  * The knowledge base for this database as plain text for the AI, one `### <path>` section per file:
- * glossary/*.yaml, the shared files, then tables/<database>/*.yaml (the folder matched ignoring case).
+ * glossary/*.yaml, the top-level files (by name), then tables/<database>/*.yaml (the folder matched ignoring case).
  * "" when there's none.
  */
 export async function loadKnowledge(database, dir = KNOWLEDGE_DIR) {
   const glossary = (await list(join(dir, "glossary"))).filter((f) => /\.ya?ml$/i.test(f)).sort();
-  const files = [...glossary.map((f) => `glossary/${f}`), ...SHARED_FILES];
+  const shared = (await list(dir)).filter((f) => SHARED.test(f) && !NOT_SENT.has(f.toLowerCase())).sort();
+  const files = [...glossary.map((f) => `glossary/${f}`), ...shared];
   const want = String(database || "").toLowerCase();
   const tablesDir = (await list(join(dir, "tables"))).find((d) => d.toLowerCase() === want);
   if (tablesDir) {

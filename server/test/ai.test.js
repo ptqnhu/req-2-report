@@ -88,6 +88,8 @@ test("knowledge: shared files and the database's tables, without YAML comments o
     "glossary/funding.yaml": "# header\n- term: funded\n  sql: x  # inline note stays\n",
     "glossary/customer.yaml": "- term: Borrowers\n",
     "gotchas.md": "# Gotchas\n\n- trap\n",
+    "notes.yaml": "- extra\n",
+    "README.md": "# For people only\n",
     "tables/APM/loan.yaml": "name: APM.dbo.loan\n",
     "tables/NLS/acct.yaml": "name: NLS.dbo.acct\n",
     "golden/q1.yaml": "request: secret answer\n",
@@ -99,7 +101,8 @@ test("knowledge: shared files and the database's tables, without YAML comments o
   const text = await loadKnowledge("apm", dir);
   assert.match(text, /^### glossary\/customer\.yaml\n- term: Borrowers\n\n### glossary\/funding\.yaml\n- term: funded\n  sql: x  # inline note stays\n\n### gotchas\.md\n# Gotchas/);
   assert.match(text, /### tables\/APM\/loan\.yaml\nname: APM\.dbo\.loan$/);
-  assert.doesNotMatch(text, /# header|NLS|secret|joins/);
+  assert.match(text, /### gotchas\.md\n# Gotchas\n\n- trap\n\n### notes\.yaml\n- extra\n\n### tables/);
+  assert.doesNotMatch(text, /# header|NLS|secret|joins|For people/);
   assert.equal(await loadKnowledge("APM", join(dir, "missing")), "");
 });
 
