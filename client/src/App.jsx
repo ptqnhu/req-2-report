@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { DEFAULT_TPL, DEFAULT_EXPORT, effectiveColumns, keyBy, applyFilters, prettify, liveSlicers, suggestSlicers, applySlicers, describeSlices } from "@req-2-report/shared";
+import { DEFAULT_TPL, DEFAULT_EXPORT, DEFAULT_ENVIRONMENT, databaseName, switchDatabase, effectiveColumns, keyBy, applyFilters, prettify, liveSlicers, suggestSlicers, applySlicers, describeSlices } from "@req-2-report/shared";
 import { api } from "./api.js";
 import { STEPS, FLOW } from "./steps/steps.js";
 import StepRail from "./components/StepRail.jsx";
@@ -32,6 +32,7 @@ export default function App() {
   // Database and report definition
   const [databases, setDatabases] = useState(null);
   const [database, setDatabaseRaw] = useState("");
+  const [environment, setEnvironmentRaw] = useState(DEFAULT_ENVIRONMENT); // production, sandbox or qa: names the database
   const [sql, setSql] = useState("");
   const [aiChat, setAiChat] = useState([]); // the conversation with the AI query assistant
   const answers = useRef(new Map()); // the columns of each query the AI wrote, by keyOf(database, sql)
@@ -60,7 +61,22 @@ export default function App() {
   function setDatabase(name) {
     setDatabaseRaw(name);
     setAiChat([]);
-    setExp((e) => ({ ...e, database: name }));
+    setExp((e) => ({ ...e, database: databaseName(name, environment) }));
+  }
+
+  /**
+   * Where the report runs. APM is Repl_APM in production and sandbox, APM in QA; the .rdl connects to that name,
+   * and the query in the editor is renamed to match, keeping the columns already worked out for it.
+   */
+  function setEnvironment(env) {
+    const renamed = switchDatabase(sql, database, environment, env);
+    if (renamed !== sql) {
+      const known = answers.current.get(keyOf(database, sql));
+      if (known) answers.current.set(keyOf(database, renamed), known);
+      setSql(renamed);
+    }
+    setEnvironmentRaw(env);
+    setExp((e) => ({ ...e, database: databaseName(database, env) }));
   }
 
   useEffect(() => {
@@ -140,7 +156,7 @@ export default function App() {
           // Written or edited by hand: the AI works out its columns from the schema
           setBusy(true);
           try {
-            applyAnalysis(await api.aiColumns(database, query), query);
+            applyAnalysis(await api.aiColumns(database, environment, query), query);
           } catch (e) {
             return setError(e.message);
           } finally {
@@ -186,7 +202,8 @@ export default function App() {
           )}
 
           {step === "query" && (
-            <QueryStep databases={databases} database={database} setDatabase={setDatabase} sql={sql} setSql={setSql}
+            <QueryStep databases={databases} database={database} setDatabase={setDatabase} environment={environment}
+              setEnvironment={setEnvironment} sql={sql} setSql={setSql}
               aiChat={aiChat} setAiChat={setAiChat} onAnswer={rememberAnswer} onAiBusy={setAiBusy} busy={busy} />
           )}
 

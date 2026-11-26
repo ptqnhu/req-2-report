@@ -12,3 +12,14 @@ const NAMES = {
 /** The name to write in queries and connect to for `database` (a schema file's name) in `environment`. */
 export const databaseName = (database, environment) =>
   NAMES[String(database || "").toLowerCase()]?.[environment] || database;
+
+/**
+ * `sql` written for `database` in environment `from`, rewritten for environment `to`: every `Repl_APM.` (or
+ * `[Repl_APM].`) becomes `APM.` and the other way round. Names that only end in the database's name are left alone.
+ */
+export function switchDatabase(sql, database, from, to) {
+  const was = databaseName(database, from), now = databaseName(database, to);
+  if (!sql || was === now) return sql;
+  const esc = was.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return sql.replace(new RegExp(`(?<![\\w\\[])(\\[?)${esc}(\\]?)(?=\\.)`, "gi"), `$1${now}$2`);
+}

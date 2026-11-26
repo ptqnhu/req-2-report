@@ -24,9 +24,9 @@ export const api = {
    * messages: [{role: "user", content} | {role: "assistant", sql, explanation}].
    * Returns { sql, explanation, columns, table }: the AI works out the columns, since the query is never run.
    */
-  aiQuery: (database, messages, sql) => request("/ai/query", { method: "POST", body: { database, messages, sql } }),
+  aiQuery: (database, environment, messages, sql) => request("/ai/query", { method: "POST", body: { database, environment, messages, sql } }),
   /** The columns of a query the user wrote themselves: { columns, table, note }. */
-  aiColumns: (database, sql) => request("/ai/columns", { method: "POST", body: { database, sql } }),
+  aiColumns: (database, environment, sql) => request("/ai/columns", { method: "POST", body: { database, environment, sql } }),
   rdl: (payload) => request("/rdl", { method: "POST", body: payload }),
   listTemplates: () => request("/templates"),
   saveTemplate: (tpl) => request(`/templates/${encodeURIComponent(tpl.name)}`, { method: "PUT", body: tpl }),

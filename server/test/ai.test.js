@@ -8,13 +8,30 @@ import { loadKnowledge } from "../src/services/ai/knowledge.js";
 import { writeQuery } from "../src/services/ai/queryWriter.js";
 import { toColumns } from "../src/services/columns.js";
 import { databaseContext } from "../src/services/ai/prompt.js";
-import { databaseName } from "@req-2-report/shared";
+import { databaseName, switchDatabase } from "@req-2-report/shared";
+import { readEnvironment } from "../src/routes/ai.js";
 
 test("APM is Repl_APM in production and sandbox, APM in QA; other databases keep their name", () => {
   assert.equal(databaseName("APM", "production"), "Repl_APM");
   assert.equal(databaseName("apm", "sandbox"), "Repl_APM");
   assert.equal(databaseName("APM", "qa"), "APM");
   assert.equal(databaseName("NLS", "production"), "NLS");
+});
+
+test("switching environment renames the database in the query, and nothing else", () => {
+  const prod = "SELECT l.loan_no FROM Repl_APM.dbo.loan l JOIN [Repl_APM].dbo.loan_history h ON h.loan_no = l.loan_no";
+  const qa = "SELECT l.loan_no FROM APM.dbo.loan l JOIN [APM].dbo.loan_history h ON h.loan_no = l.loan_no";
+  assert.equal(switchDatabase(prod, "APM", "production", "qa"), qa);
+  assert.equal(switchDatabase(qa, "APM", "qa", "sandbox"), prod);
+  assert.equal(switchDatabase(prod, "APM", "production", "sandbox"), prod); // same name in both
+  assert.equal(switchDatabase("SELECT * FROM MyAPM.dbo.x", "APM", "qa", "production"), "SELECT * FROM MyAPM.dbo.x");
+  assert.equal(switchDatabase("SELECT * FROM NLS.dbo.acct", "NLS", "production", "qa"), "SELECT * FROM NLS.dbo.acct");
+});
+
+test("environment: production when not given, case ignored, anything else refused", () => {
+  assert.equal(readEnvironment(undefined), "production");
+  assert.equal(readEnvironment(" QA "), "qa");
+  assert.throws(() => readEnvironment("staging"), (e) => e.status === 400);
 });
 
 test("the prompt tells the AI the database's name where the report runs, only when it differs", () => {

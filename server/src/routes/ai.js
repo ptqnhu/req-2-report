@@ -25,7 +25,7 @@ function readMessages(list) {
 }
 
 /** The environment the report runs in (production, sandbox, qa); production when not given. */
-function readEnvironment(value) {
+export function readEnvironment(value) {
   const env = optionalString(value, "environment", 32).trim().toLowerCase() || DEFAULT_ENVIRONMENT;
   if (!ENVIRONMENTS.some(([id]) => id === env)) throw new HttpError(400, "Pick Production, Sandbox or QA.");
   return env;

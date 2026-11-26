@@ -10,7 +10,7 @@ import SqlCode from "./SqlCode.jsx";
  * `locked` (the columns are being read) stops new requests and "Use this query" changing the query meanwhile;
  * `onBusy(true|false)` tells the builder while an answer is coming, so it doesn't move on without it.
  */
-export default function AiAssistant({ database, sql, setSql, chat, setChat, onAnswer, onBusy, locked = false }) {
+export default function AiAssistant({ database, environment, sql, setSql, chat, setChat, onAnswer, onBusy, locked = false }) {
   const [text, setText] = useState("");
   const [busy, setBusyState] = useState(false);
   const setBusy = (b) => { setBusyState(b); onBusy?.(b); };
@@ -25,7 +25,7 @@ export default function AiAssistant({ database, sql, setSql, chat, setChat, onAn
     setError("");
     setBusy(true);
     try {
-      const answer = await api.aiQuery(database, messages, sql);
+      const answer = await api.aiQuery(database, environment, messages, sql);
       setChat([...messages, { role: "assistant", ...answer }]);
       if (answer.sql) {
         onAnswer(answer);
