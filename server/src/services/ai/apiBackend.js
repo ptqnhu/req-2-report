@@ -20,7 +20,7 @@ function friendlyError(e) {
 }
 
 /** Asks Claude for a query through the Claude API, with ANTHROPIC_API_KEY. */
-export async function writeQueryWithApi({ schema, database, knowledge, messages }, { model, effort, client } = {}) {
+export async function writeQueryWithApi({ schema, database, sqlName, knowledge, messages }, { model, effort, client } = {}) {
   let response;
   try {
     response = await (client ?? getClient()).beta.messages.create({
@@ -32,7 +32,7 @@ export async function writeQueryWithApi({ schema, database, knowledge, messages 
       system: [
         { type: "text", text: INSTRUCTIONS },
         // The schema and knowledge base are the large, unchanging part, so they're cached between questions about the same database.
-        { type: "text", text: databaseContext({ database, schema, knowledge }), cache_control: { type: "ephemeral" } },
+        { type: "text", text: databaseContext({ database, sqlName, schema, knowledge }), cache_control: { type: "ephemeral" } },
       ],
       messages,
     });

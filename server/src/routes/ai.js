@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { ENVIRONMENTS, DEFAULT_ENVIRONMENT, databaseName } from "@req-2-report/shared";
 import { asyncHandler, HttpError } from "../lib/errors.js";
 import { requireString, optionalString } from "../lib/validate.js";
 import { settings } from "../lib/config.js";
@@ -23,11 +24,18 @@ function readMessages(list) {
   });
 }
 
-/** Asks the AI with the database's schema file and the knowledge base. */
-async function ask(database, messages) {
+/** The environment the report runs in (production, sandbox, qa); production when not given. */
+function readEnvironment(value) {
+  const env = optionalString(value, "environment", 32).trim().toLowerCase() || DEFAULT_ENVIRONMENT;
+  if (!ENVIRONMENTS.some(([id]) => id === env)) throw new HttpError(400, "Pick Production, Sandbox or QA.");
+  return env;
+}
+
+/** Asks the AI with the database's schema file and the knowledge base, naming the database as it is in `environment`. */
+async function ask(database, environment, messages) {
   const schema = await loadSchema(database, { maxChars: settings.aiSchemaMaxChars });
   const knowledge = await loadKnowledge(database);
-  return writeQuery({ schema, database, knowledge, messages },
+  return writeQuery({ schema, database, sqlName: databaseName(database, environment), knowledge, messages },
     { backend: settings.aiBackend, model: settings.aiModel, effort: settings.aiEffort, timeoutMs: settings.aiTimeoutMs });
 }
 
@@ -40,32 +48,34 @@ export default function aiRoutes() {
   }));
 
   /**
-   * POST /api/ai/query { database, messages: [{role: "user", content} | {role: "assistant", sql, explanation}], sql? }
+   * POST /api/ai/query { database, environment?, messages: [{role: "user", content} | {role: "assistant", sql, explanation}], sql? }
    * -> { sql, explanation, columns, table }. `sql` is what's in the editor now, so "add a filter for…" works on it.
    * `columns` are the report's columns, worked out by the AI since the query is never run.
    */
   router.post("/ai/query", asyncHandler(async (req, res) => {
     const database = requireString(req.body?.database, "database", { max: 128, allowEmpty: false });
+    const environment = readEnvironment(req.body?.environment);
     const messages = readMessages(req.body?.messages);
     if (messages.at(-1).role !== "user") throw new HttpError(400, "The conversation is out of order.");
     const current = optionalString(req.body?.sql, "sql", 200_000).trim();
     if (current) messages.at(-1).content += `\n\nThe query in the editor right now:\n\`\`\`sql\n${current}\n\`\`\``;
 
-    const answer = await ask(database, messages);
+    const answer = await ask(database, environment, messages);
     const columns = answer.sql && answer.columns.length ? toColumns(answer.columns) : [];
     res.json({ sql: answer.sql, explanation: answer.explanation, columns, table: firstTableName(answer.sql) });
   }));
 
   /**
-   * POST /api/ai/columns { database, sql } -> { columns, table, note }: the columns of a query the user wrote themselves.
+   * POST /api/ai/columns { database, environment?, sql } -> { columns, table, note }: the columns of a query the user wrote themselves.
    * `note` is the AI's warning when the query uses names that aren't in the schema.
    */
   router.post("/ai/columns", asyncHandler(async (req, res) => {
     const database = requireString(req.body?.database, "database", { max: 128, allowEmpty: false });
+    const environment = readEnvironment(req.body?.environment);
     const sql = requireString(req.body?.sql, "sql", { allowEmpty: false });
     const problem = checkReadOnly(sql);
     if (problem) throw new HttpError(422, problem);
-    const answer = await ask(database, [{ role: "user", content: describeRequest(sql) }]);
+    const answer = await ask(database, environment, [{ role: "user", content: describeRequest(sql) }]);
     res.json({ columns: toColumns(answer.columns), table: firstTableName(sql), note: answer.explanation });
   }));
 

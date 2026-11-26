@@ -27,9 +27,16 @@ The app never runs the query, so in columns list every column it returns, in ord
 (the alias), and its SQL Server type worked out from the schema (int, decimal(18,2), varchar(50), datetime, date, bit, ...).
 For an expression, give the type SQL Server would return (COUNT is int, SUM of decimal(18,4) is decimal(38,4), and so on).`;
 
-/** The database's part of the system prompt: its schema, then its knowledge base if it has one. */
-export const databaseContext = ({ database, schema, knowledge }) =>
-  `Database: ${database}\n\nSchema:\n${schema}` + (knowledge ? `\n\nKnowledge base:\n${knowledge}` : "");
+/**
+ * The database's part of the system prompt: its schema, then its knowledge base if it has one. `sqlName` is what the
+ * database is called where the report runs (Repl_APM for APM in production), when that differs from its schema name.
+ */
+export const databaseContext = ({ database, sqlName, schema, knowledge }) =>
+  `Database: ${database}` +
+  (sqlName && sqlName !== database
+    ? `\nWhere this report runs the database is named ${sqlName}: write every table as ${sqlName}.dbo.<table>, even where the schema or knowledge base says ${database}.dbo.<table>.`
+    : "") +
+  `\n\nSchema:\n${schema}` + (knowledge ? `\n\nKnowledge base:\n${knowledge}` : "");
 
 /** Sent instead of a request when the user wrote the query themselves and the app needs its columns. */
 export const describeRequest = (sql) => `Don't write or change a query. Return this query exactly as it is in sql, list the columns it returns in columns, and leave explanation empty unless it uses a table or column that isn't in the schema; then say which.

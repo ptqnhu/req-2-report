@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import AiAssistant from "../components/AiAssistant.jsx";
 import SqlEditor from "../components/SqlEditor.jsx";
+import { ENVIRONMENTS, databaseName } from "@req-2-report/shared";
 
-/** Shown greyed out in the empty SQL box; "Use example" or Tab puts it in the box. */
-const EXAMPLE_SQL = "SELECT\n      l.loan_no\n    , l.application_recvd_dtm\nFROM APM.dbo.loan AS l\nWHERE\n    l.application_recvd_dtm >= DATEADD(DAY, -30, l.application_recvd_dtm)";
+/** Shown greyed out in the empty SQL box; "Use example" or Tab puts it in the box. `apm` is APM's name in the environment. */
+const exampleSql = (apm) => `SELECT\n      l.loan_no\n    , l.application_recvd_dtm\nFROM ${apm}.dbo.loan AS l\nWHERE\n    l.application_recvd_dtm >= DATEADD(DAY, -30, l.application_recvd_dtm)`;
 
-/** databases: [{ name, tables }] from the schema files, or null while loading. */
-export default function QueryStep({ databases, database, setDatabase, sql, setSql, aiChat, setAiChat, aiSeed, onAnswer, onAiBusy, busy }) {
+/**
+ * databases: [{ name, tables }] from the schema files, or null while loading.
+ * environment: production, sandbox or qa, which decides the database's name in queries (APM is Repl_APM outside QA).
+ */
+export default function QueryStep({ databases, database, setDatabase, environment, setEnvironment, sql, setSql, aiChat, setAiChat, aiSeed, onAnswer, onAiBusy, busy }) {
   const [copied, setCopied] = useState(""); // a note in place of the hint, for a few seconds after copying
   const timer = useRef();
+  const EXAMPLE_SQL = exampleSql(databaseName("APM", environment));
+  const sqlName = databaseName(database, environment);
   useEffect(() => () => clearTimeout(timer.current), []);
   function copy() {
     clearTimeout(timer.current);
@@ -21,21 +27,29 @@ export default function QueryStep({ databases, database, setDatabase, sql, setSq
   return (
     <>
       <div className="panel">
-        <label className="fld">
-          <span className="fld-label">Database</span>
-          <select className="sel" value={database} onChange={(e) => setDatabase(e.target.value)} disabled={!databases?.length}>
-            {!databases ? <option value="">Loading…</option>
-              : !databases.length ? <option value="">No schema files yet</option>
-              : databases.map((d) => <option key={d.name} value={d.name}>{d.name} ({d.tables} {d.tables === 1 ? "table" : "tables"})</option>)}
-          </select>
-        </label>
+        <div className="connect-grid">
+          <label className="fld">
+            <span className="fld-label">Environment</span>
+            <select className="sel" value={environment} onChange={(e) => setEnvironment(e.target.value)}>
+              {ENVIRONMENTS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+            </select>
+          </label>
+          <label className="fld">
+            <span className="fld-label">Database</span>
+            <select className="sel" value={database} onChange={(e) => setDatabase(e.target.value)} disabled={!databases?.length}>
+              {!databases ? <option value="">Loading…</option>
+                : !databases.length ? <option value="">No schema files yet</option>
+                : databases.map((d) => <option key={d.name} value={d.name}>{d.name} ({d.tables} {d.tables === 1 ? "table" : "tables"})</option>)}
+            </select>
+          </label>
+        </div>
         <p className="fld-hint">
           {databases && !databases.length
             ? "Add a schema file for each database to server/schemas/, then reload."
-            : "The AI reads this database's schema file. The report runs the query against it on the SSRS server."}
+            : `The AI reads this database's schema file. The report runs the query against it on the SSRS server${sqlName !== database ? `, where it's named ${sqlName}` : ""}.`}
         </p>
       </div>
-      {database && <AiAssistant database={database} sql={sql} setSql={setSql} chat={aiChat} setChat={setAiChat} seed={aiSeed} onAnswer={onAnswer} onBusy={onAiBusy} locked={busy} />}
+      {database && <AiAssistant database={database} environment={environment} sql={sql} setSql={setSql} chat={aiChat} setChat={setAiChat} seed={aiSeed} onAnswer={onAnswer} onBusy={onAiBusy} locked={busy} />}
       <div className="panel">
         <label className="fld">
           <span className="fld-label">SQL query</span>
