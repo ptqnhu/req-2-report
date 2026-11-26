@@ -53,7 +53,7 @@ dbo.loan_person.loan_no -> dbo.loan.loan_no
 
 Export one with `sqlcmd -S <server> -d NLS -E -C -i server/scripts/schema.sql -y 0 -f 65001 -o server/schemas/NLS.txt`, or write it by hand (as `APM.txt` is, from the APM data dictionary).
 
-**Knowledge base.** `knowledge/glossary/*.yaml`, `joins.yaml`, `gotchas.md` and `tables/<database>/*.yaml` for the chosen database, minus whole-line `#` comments. `golden/` is never sent; those queries test the assistant.
+**Knowledge base.** The files in `knowledge/`, with the chosen database's tables. `golden/` is never sent; those queries test the assistant.
 
 Changes to either apply on the next AI request.
 
@@ -64,7 +64,6 @@ Changes to either apply on the next AI request.
 | What the AI is told | `server/src/services/ai/prompt.js` |
 | A database's tables and columns | `server/schemas/<database>.txt` |
 | What business terms and columns mean | `knowledge/` (see `knowledge/README.md`) |
-| The loan lifecycle stages (the Loan lifecycle page, also sent to the AI) | `knowledge/lifecycle.yaml` |
 | SQL Server type → display type | `server/src/services/typeInference.js` |
 | Which queries are allowed | `server/src/services/queryGuard.js` |
 | The .rdl contents | `server/src/rdl/` |
@@ -77,40 +76,10 @@ Changes to either apply on the next AI request.
 ## Project layout
 
 ```
-req-2-report/
-├── shared/            Dependency-free logic used by client and server
-│   ├── constants.js       Types, filter operators, default template and export settings
-│   ├── text.js            Name helpers: tokens, prettify, idLike, fileSlug
-│   ├── dates.js           Date parsing and formatting
-│   ├── values.js          coerce (raw → typed) and formatValue (typed → text)
-│   ├── filters.js         filterActive, testFilter, applyFilters, describeFilter
-│   └── columns.js         effectiveColumns, alignOf, keyBy
-├── server/            Node + Express API
-│   ├── src/
-│   │   ├── index.js / app.js  Startup, routes, serves client/dist in production
-│   │   ├── routes/        HTTP only: ai.js, templates.js, rdl.js
-│   │   ├── services/      Business logic
-│   │   │   ├── ai/            Prompt, schema loading, CLI and API backends
-│   │   │   ├── columns.js     AI column list → report columns
-│   │   │   ├── queryGuard.js  Allows only a single SELECT / WITH
-│   │   │   ├── sqlMask.js     Blanks comments and strings for keyword scanning
-│   │   │   ├── typeInference.js
-│   │   │   ├── sqlParser.js   Main table for the default title
-│   │   │   └── templateStore.js
-│   │   ├── rdl/           buildRdl, filters, textbox, styles, xml
-│   │   └── lib/           Config, errors, input validation
-│   ├── test/          node:test unit tests
-│   ├── schemas/       <database>.txt schema files
-│   ├── scripts/       schema.sql (run with sqlcmd)
-│   └── data/          templates.json
-├── knowledge/         Glossary, joins, tables, gotchas, golden queries
-└── client/src/        React + Vite UI
-    ├── App.jsx            Step navigation and report state
-    ├── api.js             All server calls
-    ├── steps/             One component per step
-    ├── components/        Reusable UI
-    ├── hooks/             useTemplates, useRdlExport
-    └── utils/             Sorting, totals, sample rows, downloads
+shared/      Logic used by both client and server
+server/      Node + Express API, schema files, tests
+client/      React + Vite UI
+knowledge/   Business notes sent to the AI (kept out of git)
 ```
 
 ## API
