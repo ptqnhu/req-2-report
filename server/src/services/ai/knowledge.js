@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 export const KNOWLEDGE_DIR = fileURLToPath(new URL("../../../../knowledge/", import.meta.url));
 
 // golden/ is left out on purpose: those verified queries test the assistant, so it mustn't see them.
-const SHARED_FILES = ["glossary.yaml", "joins.yaml", "gotchas.md"];
+// glossary/ holds one YAML file per topic (customer, collection...), all of them sent.
+const SHARED_FILES = ["joins.yaml", "lifecycle.yaml", "gotchas.md"];
 
 /** A file's text, without whole-line `#` comments in YAML (Markdown `#` lines are headings); "" if it's missing. */
 async function readText(file) {
@@ -21,10 +22,12 @@ const list = (dir) => readdir(dir).catch(() => []);
 
 /**
  * The knowledge base for this database as plain text for the AI, one `### <path>` section per file:
- * the shared files, then tables/<database>/*.yaml (the folder matched ignoring case). "" when there's none.
+ * glossary/*.yaml, the shared files, then tables/<database>/*.yaml (the folder matched ignoring case).
+ * "" when there's none.
  */
 export async function loadKnowledge(database, dir = KNOWLEDGE_DIR) {
-  const files = [...SHARED_FILES];
+  const glossary = (await list(join(dir, "glossary"))).filter((f) => /\.ya?ml$/i.test(f)).sort();
+  const files = [...glossary.map((f) => `glossary/${f}`), ...SHARED_FILES];
   const want = String(database || "").toLowerCase();
   const tablesDir = (await list(join(dir, "tables"))).find((d) => d.toLowerCase() === want);
   if (tablesDir) {

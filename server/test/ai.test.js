@@ -7,6 +7,21 @@ import { listSchemas, loadSchema } from "../src/services/ai/schema.js";
 import { loadKnowledge } from "../src/services/ai/knowledge.js";
 import { writeQuery } from "../src/services/ai/queryWriter.js";
 import { toColumns } from "../src/services/columns.js";
+import { databaseContext } from "../src/services/ai/prompt.js";
+import { databaseName } from "@req-2-report/shared";
+
+test("APM is Repl_APM in production and sandbox, APM in QA; other databases keep their name", () => {
+  assert.equal(databaseName("APM", "production"), "Repl_APM");
+  assert.equal(databaseName("apm", "sandbox"), "Repl_APM");
+  assert.equal(databaseName("APM", "qa"), "APM");
+  assert.equal(databaseName("NLS", "production"), "NLS");
+});
+
+test("the prompt tells the AI the database's name where the report runs, only when it differs", () => {
+  const prod = databaseContext({ database: "APM", sqlName: "Repl_APM", schema: "dbo.loan (table): loan_no int" });
+  assert.match(prod, /^Database: APM\nWhere this report runs the database is named Repl_APM: write every table as Repl_APM\.dbo\.<table>/);
+  assert.equal(databaseContext({ database: "APM", sqlName: "APM", schema: "s" }), "Database: APM\n\nSchema:\ns");
+});
 
 /** A stand-in for the Claude CLI that records how it was run and prints a canned result. */
 function fakeCli(result) {
@@ -53,7 +68,8 @@ test("the AI's column list becomes the report's columns, with unique names", () 
 test("knowledge: shared files and the database's tables, without YAML comments or golden queries", async () => {
   const dir = await mkdtemp(join(tmpdir(), "knowledge-"));
   const files = {
-    "glossary.yaml": "# header\n- term: funded\n  sql: x  # inline note stays\n",
+    "glossary/funding.yaml": "# header\n- term: funded\n  sql: x  # inline note stays\n",
+    "glossary/customer.yaml": "- term: Borrowers\n",
     "gotchas.md": "# Gotchas\n\n- trap\n",
     "tables/APM/loan.yaml": "name: APM.dbo.loan\n",
     "tables/NLS/acct.yaml": "name: NLS.dbo.acct\n",
@@ -64,7 +80,7 @@ test("knowledge: shared files and the database's tables, without YAML comments o
     await writeFile(join(dir, name), text, "utf8");
   }
   const text = await loadKnowledge("apm", dir);
-  assert.match(text, /^### glossary\.yaml\n- term: funded\n  sql: x  # inline note stays\n\n### gotchas\.md\n# Gotchas/);
+  assert.match(text, /^### glossary\/customer\.yaml\n- term: Borrowers\n\n### glossary\/funding\.yaml\n- term: funded\n  sql: x  # inline note stays\n\n### gotchas\.md\n# Gotchas/);
   assert.match(text, /### tables\/APM\/loan\.yaml\nname: APM\.dbo\.loan$/);
   assert.doesNotMatch(text, /# header|NLS|secret|joins/);
   assert.equal(await loadKnowledge("APM", join(dir, "missing")), "");

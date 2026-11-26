@@ -53,7 +53,7 @@ dbo.loan_person.loan_no -> dbo.loan.loan_no
 
 Export one with `sqlcmd -S <server> -d NLS -E -C -i server/scripts/schema.sql -y 0 -f 65001 -o server/schemas/NLS.txt`, or write it by hand (as `APM.txt` is, from the APM data dictionary).
 
-**Knowledge base.** `knowledge/glossary.yaml`, `joins.yaml`, `gotchas.md` and `tables/<database>/*.yaml` for the chosen database, minus whole-line `#` comments. `golden/` is never sent; those queries test the assistant.
+**Knowledge base.** `knowledge/glossary/*.yaml`, `joins.yaml`, `gotchas.md` and `tables/<database>/*.yaml` for the chosen database, minus whole-line `#` comments. `golden/` is never sent; those queries test the assistant.
 
 Changes to either apply on the next AI request.
 
